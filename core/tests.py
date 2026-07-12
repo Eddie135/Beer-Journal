@@ -48,8 +48,19 @@ class HealthPageTests(TestCase):
         stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")
         self.assertIn("bottom-tab-bar", stylesheet)
         self.assertIn("safe-area-inset-bottom", stylesheet)
+        self.assertIn("164px", stylesheet)
+        self.assertIn("height: 52px", stylesheet)
         self.assertIn("min-height: 44px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
+
+    def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
+        self.assertContains(self.client.get("/beers/"), "floating-add-button")
+        self.assertContains(self.client.get("/tastings/"), "floating-add-button")
+        self.assertNotContains(self.client.get("/personal/"), "floating-add-button")
+        self.assertNotContains(self.client.get("/personal/"), 'aria-label="添加啤酒"')
+        template_root = Path(__file__).parent.parent / "templates"
+        for name in ("beer_detail.html", "beer_edit.html", "tasting_detail.html", "tasting_edit.html"):
+            self.assertNotIn("floating-add-button", (template_root / name).read_text(encoding="utf-8"))
 
     def test_health_endpoint(self):
         response = self.client.get("/health/")
@@ -477,6 +488,36 @@ class PublicWorkflowTests(TransactionTestCase):
             self.assertEqual(tasting.photos.count(), 1)
             self.assertTrue((Path(media_root) / tasting.photos.get().storage_key).is_file())
 
+    def test_beer_edit_photo_upload_uses_latest_active_tasting(self):
+        beer = Beer.objects.create(name="编辑照片啤酒", style=self.style, origin_country_code="CN")
+        older = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 10, 20, 30)))
+        latest = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)))
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            page = self.client.get(f"/beers/{beer.id}/edit/")
+            self.assertEqual(page.status_code, 200)
+            self.assertContains(page, "照片")
+            self.assertContains(page, 'name="photos"')
+            response = self.client.post(
+                f"/beers/{beer.id}/edit/",
+                {
+                    "name": beer.name,
+                    "brand_name": "",
+                    "brewery_name": "",
+                    "origin_country_code": "CN",
+                    "category": str(self.category.id),
+                    "style": str(self.style.id),
+                    "abv": "",
+                    "ibu": "",
+                    "plato": "",
+                    "mouthfeel_profile": "",
+                    "flavor_tag_input": "",
+                    "photos": [self._image_upload("beer-edit.png")],
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(older.photos.count(), 0)
+            self.assertEqual(latest.photos.count(), 1)
+
     def test_new_beer_from_tasting_flow_creates_first_tasting(self):
         payload = self._valid_payload()
         payload["from_tasting"] = "1"
@@ -523,6 +564,15 @@ class PublicWorkflowTests(TransactionTestCase):
     def test_edit_and_soft_delete_restore_records(self):
         beer = Beer.objects.create(name="待编辑啤酒", style=self.style, origin_country_code="CN")
         tasting = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)), overall_score=Decimal("7.0"))
+        TastingRatingValue.objects.create(
+            tasting=tasting,
+            dimension=self.dimension,
+            value=Decimal("7.5"),
+            dimension_name_snapshot=self.dimension.name,
+            scale_min_snapshot=Decimal("0"),
+            scale_max_snapshot=Decimal("10"),
+            step_snapshot=Decimal("0.5"),
+        )
         beer_response = self.client.post(
             f"/beers/{beer.id}/edit/",
             {"name": "已编辑啤酒", "brand_name": "", "brewery_name": "", "origin_country_code": "CN", "category": str(self.category.id), "style": str(self.style.id), "abv": "5.00", "ibu": "20.00", "plato": "12.50", "mouthfeel_profile": "crisp", "flavor_tag_input": "柑橘、焦糖"},
@@ -533,6 +583,9 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(beer.plato, Decimal("12.50"))
         self.assertEqual(beer.mouthfeel_profile, "crisp")
         self.assertEqual(set(beer.flavor_tag_links.values_list("tag__name", flat=True)), {"柑橘", "焦糖"})
+        edit_page = self.client.get(f"/tastings/{tasting.id}/edit/")
+        self.assertNotContains(edit_page, "多维评分")
+        self.assertNotContains(edit_page, 'name="rating_')
         tasting_response = self.client.post(
             f"/tastings/{tasting.id}/edit/",
             {"tasted_at": "2026-07-16T20:30", "drinking_location": "酒吧", "price_amount": "30.00", "overall_score": "8.0", "notes": "已编辑", "food_tags": [str(self.food.id)], "occasion_tags": [str(self.occasion.id)], f"rating_{self.dimension.id}": "8.0"},
@@ -540,6 +593,7 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(tasting_response.status_code, 302)
         tasting.refresh_from_db()
         self.assertEqual(tasting.overall_score, Decimal("8.0"))
+        self.assertEqual(tasting.rating_values.get().value, Decimal("7.5"))
         self.client.post(f"/tastings/{tasting.id}/delete/")
         tasting.refresh_from_db()
         self.assertIsNotNone(tasting.deleted_at)

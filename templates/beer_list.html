@@ -2,7 +2,7 @@
 {% load beer_extras %}
 {% block title %}我的啤酒 · BEER JOURNAL{% endblock %}
 {% block content %}
-  <section class="collection-heading"><div><p class="screen-kicker">MY COLLECTION</p><h1>我的啤酒</h1><p>{{ beers|length }} 款收藏</p></div><a class="icon-button" href="{% url 'beer-add' %}" aria-label="添加啤酒">＋</a></section>
+  <section class="collection-heading"><div><p class="screen-kicker">MY COLLECTION</p><h1>我的啤酒</h1><p>{{ beers|length }} 款收藏</p></div></section>
 
   <form class="collection-search" method="get">
     <label class="visually-hidden" for="beer-query">搜索啤酒</label><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索名称、品牌、酒厂、国家或风味"><button type="submit" aria-label="搜索">⌕</button>
@@ -38,4 +38,5 @@
       <section class="empty-state app-card"><span class="empty-icon">◌</span><h2>没有符合条件的啤酒</h2><p>换个关键词或清除筛选，再试一次。</p><a class="button" href="{% url 'beer-list' %}">清除筛选</a></section>
     {% endfor %}
   </section>
+  <a class="floating-add-button" href="{% url 'beer-add' %}" aria-label="添加新啤酒"><span>＋</span><span>添加啤酒</span></a>
 {% endblock %}

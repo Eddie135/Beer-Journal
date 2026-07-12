@@ -1,3 +1,11 @@
 {% extends "base.html" %}
 {% block title %}编辑 {{ beer.name }} · BEER JOURNAL{% endblock %}
-{% block content %}<div class="page-heading"><div><p class="eyebrow">啤酒资料</p><h1>编辑 {{ beer.name }}</h1></div></div><form method="post" class="record-form">{% csrf_token %}{% for field in form %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}<button class="button" type="submit">保存修改</button></form>{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><p class="eyebrow">啤酒资料</p><h1>编辑 {{ beer.name }}</h1></div></div>
+  <form method="post" enctype="multipart/form-data" class="record-form beer-edit-form">
+    {% csrf_token %}
+    <section class="beer-edit-photos app-card"><h2>照片</h2><p>照片会安全保存到最近一次品饮记录中。</p><div class="photo-grid">{% for photo in current_photos %}<a href="{% url 'photo-file' photo.id 'display' %}"><img src="{% url 'photo-file' photo.id 'thumbnail' %}" alt="{{ beer.name }} 照片"></a>{% empty %}<div class="photo-empty">暂无照片</div>{% endfor %}</div><div class="form-field{% if form.photos.errors %} has-error{% endif %}">{{ form.photos.label_tag }}{{ form.photos }}{{ form.photos.errors }}</div></section>
+    {% for field in form %}{% if field.name != "photos" %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>{% endif %}{% endfor %}
+    <button class="button" type="submit">保存修改</button>
+  </form>
+{% endblock %}

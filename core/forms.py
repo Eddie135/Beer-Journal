@@ -273,6 +273,7 @@ class BeerEditForm(forms.Form):
     plato = forms.DecimalField(label="麦汁浓度 Plato（°P）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"))
     mouthfeel_profile = forms.ChoiceField(label="口感", required=False, choices=(("", "未填写"),) + Beer.MOUTHFEEL_CHOICES)
     flavor_tag_input = forms.CharField(label="风味标签", required=False, help_text="用逗号或顿号分隔，例如：柑橘、松脂、焦糖。")
+    photos = MultipleFileField(label="新增照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
     def __init__(self, *args, beer, **kwargs):
         super().__init__(*args, **kwargs)
@@ -330,9 +331,10 @@ class TastingEditForm(forms.Form):
     occasion_tags = forms.ModelMultipleChoiceField(label="饮用场景", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
     photos = MultipleFileField(label="新增照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
-    def __init__(self, *args, tasting=None, **kwargs):
+    def __init__(self, *args, tasting=None, preserve_ratings=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.tasting = tasting
+        self.preserve_ratings = preserve_ratings
         self.fields["food_tags"].queryset = TastingTag.objects.filter(category="food_pairing")
         self.fields["occasion_tags"].queryset = TastingTag.objects.filter(category="occasion")
         self.dimensions = list(RatingDimension.objects.filter(is_active=True).order_by("sort_order", "code"))
@@ -383,15 +385,16 @@ class TastingEditForm(forms.Form):
         self.tasting.tag_links.all().delete()
         for tag in list(data["food_tags"]) + list(data["occasion_tags"]):
             TastingTagLink.objects.create(tasting=self.tasting, tag=tag)
-        for dimension in self.dimensions:
-            field_name = CreateBeerTastingForm._rating_field_name(dimension)
-            value = data.get(field_name)
-            if value is None:
-                self.tasting.rating_values.filter(dimension=dimension).delete()
-            else:
-                TastingRatingValue.objects.update_or_create(
-                    tasting=self.tasting,
-                    dimension=dimension,
-                    defaults={"value": value, "dimension_name_snapshot": dimension.name, "scale_min_snapshot": dimension.scale_min, "scale_max_snapshot": dimension.scale_max, "step_snapshot": dimension.step},
-                )
+        if not self.preserve_ratings:
+            for dimension in self.dimensions:
+                field_name = CreateBeerTastingForm._rating_field_name(dimension)
+                value = data.get(field_name)
+                if value is None:
+                    self.tasting.rating_values.filter(dimension=dimension).delete()
+                else:
+                    TastingRatingValue.objects.update_or_create(
+                        tasting=self.tasting,
+                        dimension=dimension,
+                        defaults={"value": value, "dimension_name_snapshot": dimension.name, "scale_min_snapshot": dimension.scale_min, "scale_max_snapshot": dimension.scale_max, "step_snapshot": dimension.step},
+                    )
         return self.tasting

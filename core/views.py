@@ -269,16 +269,27 @@ def tasting_detail(request, tasting_id):
 
 def edit_beer(request, beer_id):
     beer = get_object_or_404(Beer.objects.filter(deleted_at__isnull=True).prefetch_related("flavor_tag_links__tag"), id=beer_id)
-    form = BeerEditForm(request.POST or None, beer=beer)
+    current_photos = Photo.objects.filter(tasting__beer=beer, tasting__deleted_at__isnull=True).order_by("-tasting__tasted_at", "sort_order", "created_at")
+    photo_tasting = beer.tastings.filter(deleted_at__isnull=True).order_by("-tasted_at", "-created_at").first()
+    form = BeerEditForm(request.POST or None, request.FILES or None, beer=beer)
     if request.method == "POST" and form.is_valid():
-        form.save()
-        return redirect("beer-detail", beer_id=beer.id)
-    return render(request, "beer_edit.html", {"form": form, "beer": beer})
+        if form.cleaned_data["photos"] and photo_tasting is None:
+            form.add_error("photos", "请先创建至少一条品饮记录，才能保存照片。")
+        else:
+            try:
+                with transaction.atomic():
+                    form.save()
+                    if photo_tasting:
+                        create_photos(photo_tasting, form.cleaned_data["photos"])
+                return redirect("beer-detail", beer_id=beer.id)
+            except PhotoProcessingError as exc:
+                form.add_error("photos", str(exc))
+    return render(request, "beer_edit.html", {"form": form, "beer": beer, "current_photos": current_photos})
 
 
 def edit_tasting(request, tasting_id):
     tasting = get_object_or_404(Tasting.objects.filter(deleted_at__isnull=True).prefetch_related("rating_values", "tag_links__tag", "photos"), id=tasting_id)
-    form = TastingEditForm(request.POST or None, request.FILES or None, tasting=tasting)
+    form = TastingEditForm(request.POST or None, request.FILES or None, tasting=tasting, preserve_ratings=True)
     if request.method == "POST" and form.is_valid():
         try:
             with transaction.atomic():
