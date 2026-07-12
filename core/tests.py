@@ -18,6 +18,8 @@ from .models import (
     BeerCategory,
     BeerFlavorTag,
     BeerStyle,
+    Brand,
+    Brewery,
     FlavorTag,
     RatingDimension,
     Tasting,
@@ -338,6 +340,54 @@ class PublicWorkflowTests(TransactionTestCase):
         tasting_response = self.client.get(f"/tastings/{tasting.id}/")
         self.assertEqual(tasting_response.status_code, 200)
         self.assertContains(tasting_response, "烧烤")
+
+    def test_collection_search_filters_and_sorting_use_active_tastings(self):
+        lager_category = BeerCategory.objects.create(name="Lager", normalized_name="collection-lager", code="collection-lager")
+        lager_style = BeerStyle.objects.create(name="皮尔森", normalized_name="collection-pilsner", category=lager_category)
+        brand = Brand.objects.create(name="收藏品牌", normalized_name="collection-brand", country_code="DE", region="")
+        brewery = Brewery.objects.create(name="收藏酒厂", normalized_name="collection-brewery", country_code="DE", region="")
+        citrus = FlavorTag.objects.create(name="柑橘收藏", normalized_name="collection-citrus", category="自定义")
+        pine = FlavorTag.objects.create(name="松脂收藏", normalized_name="collection-pine", category="自定义")
+        newest = Beer.objects.create(name="最新 IPA", brand=brand, brewery=brewery, style=self.style, origin_country_code="DE", mouthfeel_profile="crisp")
+        highest = Beer.objects.create(name="最高 皮尔森", style=lager_style, origin_country_code="CN", mouthfeel_profile="full")
+        no_tasting = Beer.objects.create(name="未品饮 小麦", style=self.style, origin_country_code="BE", mouthfeel_profile="balanced")
+        BeerFlavorTag.objects.create(beer=newest, tag=citrus)
+        BeerFlavorTag.objects.create(beer=highest, tag=pine)
+        Tasting.objects.create(beer=newest, tasted_at=timezone.make_aware(datetime(2026, 7, 18, 20, 30)), overall_score=Decimal("7.5"))
+        Tasting.objects.create(beer=newest, tasted_at=timezone.make_aware(datetime(2026, 7, 14, 20, 30)), overall_score=Decimal("8.5"))
+        Tasting.objects.create(beer=highest, tasted_at=timezone.make_aware(datetime(2026, 7, 16, 20, 30)), overall_score=Decimal("9.5"))
+        deleted = Tasting.objects.create(beer=highest, tasted_at=timezone.make_aware(datetime(2026, 7, 19, 20, 30)), overall_score=Decimal("10.0"))
+        deleted.deleted_at = timezone.now()
+        deleted.save(update_fields=["deleted_at", "updated_at"])
+
+        response = self.client.get("/beers/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, newest.name)
+        self.assertContains(response, no_tasting.name)
+        content = response.content.decode()
+        self.assertLess(content.index(newest.name), content.index(highest.name))
+        self.assertLess(content.index(highest.name), content.index(no_tasting.name))
+        self.assertIn("★ 8.0", content)
+        self.assertIn("2 次品饮", content)
+
+        for query, expected, excluded in (
+            ({"q": "收藏酒厂"}, newest.name, highest.name),
+            ({"q": "德国"}, newest.name, highest.name),
+            ({"category": str(lager_category.id)}, highest.name, newest.name),
+            ({"style": str(self.style.id)}, newest.name, highest.name),
+            ({"country": "BE"}, no_tasting.name, newest.name),
+            ({"mouthfeel": "full"}, highest.name, newest.name),
+            ({"tag": str(citrus.id)}, newest.name, highest.name),
+            ({"min_score": "9.0"}, highest.name, newest.name),
+        ):
+            filtered = self.client.get("/beers/", query)
+            self.assertContains(filtered, expected)
+            self.assertNotContains(filtered, excluded)
+
+        by_score = self.client.get("/beers/", {"sort": "score"}).content.decode()
+        self.assertLess(by_score.index(highest.name), by_score.index(newest.name))
+        by_count = self.client.get("/beers/", {"sort": "count"}).content.decode()
+        self.assertLess(by_count.index(newest.name), by_count.index(highest.name))
 
     def test_tasting_timeline_and_beer_selection_search_are_available(self):
         beer = Beer.objects.create(name="搜索用 IPA", style=self.style, origin_country_code="DE")

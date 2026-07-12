@@ -2,20 +2,40 @@
 {% load beer_extras %}
 {% block title %}我的啤酒 · BEER JOURNAL{% endblock %}
 {% block content %}
-  <div class="page-heading"><div><p class="eyebrow">啤酒库</p><h1>我的啤酒</h1></div><a class="button" href="{% url 'beer-add' %}">添加啤酒</a></div>
-  <section class="beer-grid">
+  <section class="collection-heading"><div><p class="screen-kicker">MY COLLECTION</p><h1>我的啤酒</h1><p>{{ beers|length }} 款收藏</p></div><a class="icon-button" href="{% url 'beer-add' %}" aria-label="添加啤酒">＋</a></section>
+
+  <form class="collection-search" method="get">
+    <label class="visually-hidden" for="beer-query">搜索啤酒</label><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索名称、品牌、酒厂、国家或风味"><button type="submit" aria-label="搜索">⌕</button>
+  </form>
+
+  <details class="filter-sheet"{% if filters.category or filters.style or filters.country or filters.mouthfeel or filters.tag or filters.min_score or filters.max_score or filters.sort != "latest" %} open{% endif %}>
+    <summary><span>筛选与排序</span><span class="filter-sheet-hint">轻触展开</span></summary>
+    <form method="get" class="collection-filters">
+      <input type="hidden" name="q" value="{{ filters.q }}">
+      <div class="filter-grid">
+        <label>大分类<select name="category"><option value="">全部</option>{% for category in categories %}<option value="{{ category.id }}"{% if filters.category == category.id|stringformat:"s" %} selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
+        <label>小类型<select name="style"><option value="">全部</option>{% for style in styles %}<option value="{{ style.id }}"{% if filters.style == style.id|stringformat:"s" %} selected{% endif %}>{{ style.category.name }} · {{ style.name }}</option>{% endfor %}</select></label>
+        <label>国家<select name="country"><option value="">全部</option>{% for code, name in countries %}<option value="{{ code }}"{% if filters.country == code %} selected{% endif %}>{{ code|flag }} {{ name }}</option>{% endfor %}</select></label>
+        <label>口感<select name="mouthfeel"><option value="">全部</option>{% for value, label in mouthfeel_choices %}<option value="{{ value }}"{% if filters.mouthfeel == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+        <label>风味标签<select name="tag"><option value="">全部</option>{% for tag in flavor_tags %}<option value="{{ tag.id }}"{% if filters.tag == tag.id|stringformat:"s" %} selected{% endif %}>{{ tag.name }}</option>{% endfor %}</select></label>
+        <label>最低评分<input name="min_score" inputmode="decimal" value="{{ filters.min_score }}" placeholder="例如 7.5"></label>
+        <label>最高评分<input name="max_score" inputmode="decimal" value="{{ filters.max_score }}" placeholder="例如 9.0"></label>
+        <label>排序<select name="sort"><option value="latest"{% if filters.sort == "latest" %} selected{% endif %}>最近品饮</option><option value="score"{% if filters.sort == "score" %} selected{% endif %}>平均评分</option><option value="count"{% if filters.sort == "count" %} selected{% endif %}>品饮次数</option></select></label>
+      </div>
+      <div class="filter-actions"><a href="{% url 'beer-list' %}">清除</a><button class="button" type="submit">应用筛选</button></div>
+    </form>
+  </details>
+
+  <section class="collection-grid">
     {% for beer in beers %}
-      <article class="beer-card app-card">
-        {% if beer.cover_photo %}<img class="card-image" src="{% url 'photo-file' beer.cover_photo.id 'thumbnail' %}" alt="{{ beer.name }} 照片">{% else %}<div class="image-placeholder" aria-label="暂无图片">暂无图片</div>{% endif %}
-        <div class="card-body">
-          <p class="meta-line"><span class="flag">{{ beer.origin_country_code|flag }}</span> {{ beer.origin_country_code|country_name }}</p>
-          <h2><a href="{% url 'beer-detail' beer.id %}">{{ beer.name }}</a></h2>
-          <p>{{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</p>
-          <p class="score">平均评分：{% if beer.average_score is not None %}{{ beer.average_score|floatformat:1 }}{% else %}暂无{% endif %}</p>
-        </div>
+      <article class="collection-card app-card">
+        <a class="collection-card-link" href="{% url 'beer-detail' beer.id %}" aria-label="查看 {{ beer.name }}">
+          {% if beer.cover_photo %}<img class="collection-image progressive-image" src="{% url 'photo-file' beer.cover_photo.id 'thumbnail' %}" alt="{{ beer.name }} 酒标或照片">{% else %}<div class="image-placeholder collection-placeholder">暂无图片</div>{% endif %}
+          <div class="collection-card-body"><p class="meta-line">{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }}</p><h2>{{ beer.name }}</h2><p class="collection-brand">{{ beer.brand|default:"未填写品牌" }}</p><p class="collection-style">{{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</p><div class="collection-stats"><span>{% if beer.average_score is not None %}★ {{ beer.average_score|floatformat:1 }}{% else %}未评分{% endif %}</span><span>{{ beer.tasting_count }} 次品饮</span></div><div class="tag-list">{% for link in beer.flavor_tag_links.all %}<span class="tag">{{ link.tag.name }}</span>{% endfor %}</div></div>
+        </a>
       </article>
     {% empty %}
-      <section class="empty-state"><h2>还没有啤酒记录</h2><p>从第一瓶啤酒开始建立你的资料库。</p><a class="button" href="{% url 'beer-add' %}">添加啤酒</a></section>
+      <section class="empty-state app-card"><span class="empty-icon">◌</span><h2>没有符合条件的啤酒</h2><p>换个关键词或清除筛选，再试一次。</p><a class="button" href="{% url 'beer-list' %}">清除筛选</a></section>
     {% endfor %}
   </section>
 {% endblock %}

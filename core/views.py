@@ -1,15 +1,17 @@
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Avg, Q
+from django.db.models import Avg, Count, F, Max, Prefetch, Q
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from .forms import BeerEditForm, BeerSelectionForm, CreateBeerTastingForm, DailyTastingForm, TastingEditForm
-from .models import Beer, Photo, Tasting
+from .countries import COUNTRIES, COUNTRY_NAMES
+from .models import Beer, BeerCategory, BeerStyle, FlavorTag, Photo, Tasting
 from .photo_service import PhotoProcessingError, create_photos, delete_photo_keys
 
 def home(request):
@@ -20,14 +22,85 @@ def health(request):
 
 
 def beer_list(request):
+    filters = {
+        "q": request.GET.get("q", "").strip(),
+        "category": request.GET.get("category", ""),
+        "style": request.GET.get("style", ""),
+        "country": request.GET.get("country", ""),
+        "mouthfeel": request.GET.get("mouthfeel", ""),
+        "tag": request.GET.get("tag", ""),
+        "min_score": request.GET.get("min_score", "").strip(),
+        "max_score": request.GET.get("max_score", "").strip(),
+        "sort": request.GET.get("sort", "latest"),
+    }
     beers = (
         Beer.objects.filter(deleted_at__isnull=True)
-        .select_related("style")
-        .annotate(average_score=Avg("tastings__overall_score", filter=Q(tastings__deleted_at__isnull=True)))
+        .select_related("style", "style__category", "brand", "brewery")
+        .prefetch_related(
+            "flavor_tag_links__tag",
+            Prefetch(
+                "tastings",
+                queryset=Tasting.objects.filter(deleted_at__isnull=True).prefetch_related("photos").order_by("-tasted_at", "-created_at"),
+                to_attr="active_tastings",
+            ),
+        )
+        .annotate(
+            average_score=Avg("tastings__overall_score", filter=Q(tastings__deleted_at__isnull=True)),
+            tasting_count=Count("tastings", filter=Q(tastings__deleted_at__isnull=True), distinct=True),
+            latest_tasted_at=Max("tastings__tasted_at", filter=Q(tastings__deleted_at__isnull=True)),
+        )
     )
+    if filters["q"]:
+        country_codes = [code for code, name in COUNTRY_NAMES.items() if filters["q"] in name]
+        beers = beers.filter(
+            Q(name__icontains=filters["q"])
+            | Q(brand__name__icontains=filters["q"])
+            | Q(brewery__name__icontains=filters["q"])
+            | Q(origin_country_code__icontains=filters["q"])
+            | Q(origin_country_code__in=country_codes)
+            | Q(flavor_tag_links__tag__name__icontains=filters["q"])
+        )
+    if filters["category"]:
+        beers = beers.filter(style__category_id=filters["category"])
+    if filters["style"]:
+        beers = beers.filter(style_id=filters["style"])
+    if filters["country"]:
+        beers = beers.filter(origin_country_code=filters["country"])
+    if filters["mouthfeel"]:
+        beers = beers.filter(mouthfeel_profile=filters["mouthfeel"])
+    if filters["tag"]:
+        beers = beers.filter(flavor_tag_links__tag_id=filters["tag"])
+    if filters["min_score"]:
+        try:
+            beers = beers.filter(average_score__gte=Decimal(filters["min_score"]))
+        except (InvalidOperation, ValueError):
+            filters["min_score"] = ""
+    if filters["max_score"]:
+        try:
+            beers = beers.filter(average_score__lte=Decimal(filters["max_score"]))
+        except (InvalidOperation, ValueError):
+            filters["max_score"] = ""
+    if filters["sort"] == "score":
+        beers = beers.order_by(F("average_score").desc(nulls_last=True), "name", "id")
+    elif filters["sort"] == "count":
+        beers = beers.order_by(F("tasting_count").desc(), "name", "id")
+    else:
+        filters["sort"] = "latest"
+        beers = beers.order_by(F("latest_tasted_at").desc(nulls_last=True), "name", "id")
+    beers = beers.distinct()
     for beer in beers:
-        beer.cover_photo = Photo.objects.filter(tasting__beer=beer, tasting__deleted_at__isnull=True).order_by("-tasting__tasted_at", "sort_order").first()
-    return render(request, "beer_list.html", {"beers": beers})
+        latest_tasting = beer.active_tastings[0] if beer.active_tastings else None
+        photos = list(latest_tasting.photos.all()) if latest_tasting else []
+        beer.cover_photo = photos[0] if photos else None
+    return render(request, "beer_list.html", {
+        "beers": beers,
+        "filters": filters,
+        "categories": BeerCategory.objects.filter(is_active=True, deleted_at__isnull=True),
+        "styles": BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category"),
+        "flavor_tags": FlavorTag.objects.all(),
+        "countries": COUNTRIES,
+        "mouthfeel_choices": Beer.MOUTHFEEL_CHOICES,
+    })
 
 
 def tasting_list(request):
