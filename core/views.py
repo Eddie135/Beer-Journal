@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -35,8 +35,14 @@ def beer_list(request):
         "max_score": request.GET.get("max_score", "").strip(),
         "sort": request.GET.get("sort", "latest"),
     }
+    active_beers = Beer.objects.filter(deleted_at__isnull=True)
+    collection_stats = active_beers.aggregate(
+        beer_count=Count("id", distinct=True),
+        tasting_count=Count("tastings", filter=Q(tastings__deleted_at__isnull=True), distinct=True),
+        average_score=Avg("tastings__overall_score", filter=Q(tastings__deleted_at__isnull=True)),
+    )
     beers = (
-        Beer.objects.filter(deleted_at__isnull=True)
+        active_beers
         .select_related("style", "style__category", "brand", "brewery")
         .prefetch_related(
             "flavor_tag_links__tag",
@@ -90,12 +96,17 @@ def beer_list(request):
         filters["sort"] = "latest"
         beers = beers.order_by(F("latest_tasted_at").desc(nulls_last=True), "name", "id")
     beers = beers.distinct()
+    recent_cutoff = timezone.now() - timedelta(days=30)
     for beer in beers:
         latest_tasting = beer.active_tastings[0] if beer.active_tastings else None
         photos = list(latest_tasting.photos.all()) if latest_tasting else []
         beer.cover_photo = photos[0] if photos else None
+        beer.is_recently_tasted = bool(beer.latest_tasted_at and beer.latest_tasted_at >= recent_cutoff)
+        beer.is_highly_rated = beer.average_score is not None and beer.average_score >= Decimal("8.5")
+        beer.is_new_collection = beer.created_at >= recent_cutoff
     return render(request, "beer_list.html", {
         "beers": beers,
+        "collection_stats": collection_stats,
         "filters": filters,
         "categories": BeerCategory.objects.filter(is_active=True, deleted_at__isnull=True),
         "styles": BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category"),

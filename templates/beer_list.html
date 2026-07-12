@@ -2,13 +2,22 @@
 {% load beer_extras %}
 {% block title %}我的啤酒 · BEER JOURNAL{% endblock %}
 {% block content %}
-  <section class="collection-heading"><div><p class="screen-kicker">MY COLLECTION</p><h1>我的啤酒</h1><p>{{ beers|length }} 款收藏</p></div></section>
+  <section class="collection-hero app-card">
+    <div class="collection-hero-copy"><p class="screen-kicker">PRIVATE CELLAR</p><h1>我的啤酒</h1><p>每一款收藏，都有自己的味觉记忆。</p></div>
+    <div class="collection-overview" aria-label="收藏概览">
+      <div><strong>{{ collection_stats.beer_count }}</strong><span>款收藏</span></div>
+      <div><strong>{{ collection_stats.tasting_count }}</strong><span>次品饮</span></div>
+      <div><strong>{% if collection_stats.average_score is not None %}{{ collection_stats.average_score|floatformat:1 }}{% else %}—{% endif %}</strong><span>平均评分</span></div>
+    </div>
+  </section>
 
-  <form class="collection-search" method="get">
-    <label class="visually-hidden" for="beer-query">搜索啤酒</label><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索名称、品牌、酒厂、国家或风味"><button type="submit" aria-label="搜索">⌕</button>
-  </form>
+  <section class="collection-tools" aria-label="搜索与筛选">
+    <form class="collection-search" method="get">
+      <label class="visually-hidden" for="beer-query">搜索啤酒</label><span class="search-glyph" aria-hidden="true">⌕</span><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索啤酒、品牌、国家"><button type="submit" aria-label="搜索">搜索</button>
+    </form>
+    <button class="filter-trigger filter-chip" type="button" data-filter-open><span>筛选与排序</span>{% if filters.category or filters.style or filters.country or filters.mouthfeel or filters.tag or filters.min_score or filters.max_score or filters.sort != "latest" %}<b>已选</b>{% endif %}<span aria-hidden="true">⌄</span></button>
+  </section>
 
-  <button class="filter-trigger" type="button" data-filter-open><span>筛选与排序</span><span>⌄</span></button>
   <div class="filter-overlay" data-filter-overlay></div>
   <section class="filter-sheet" data-filter-sheet aria-hidden="true" aria-label="筛选与排序">
     <div class="filter-sheet-header"><span>筛选与排序</span><button type="button" data-filter-close aria-label="关闭筛选">×</button></div>
@@ -28,12 +37,13 @@
     </form>
   </section>
 
+  <div class="collection-section-heading"><h2>{% if filters.q or filters.category or filters.style or filters.country or filters.mouthfeel or filters.tag or filters.min_score or filters.max_score %}筛选结果{% else %}我的收藏{% endif %}</h2><span>{{ beers|length }} 款</span></div>
   <section class="collection-grid">
     {% for beer in beers %}
       <article class="collection-card app-card">
         <a class="collection-card-link" href="{% url 'beer-detail' beer.id %}" aria-label="查看 {{ beer.name }}">
-          {% if beer.cover_photo %}<img class="collection-image progressive-image" src="{% url 'photo-file' beer.cover_photo.id 'thumbnail' %}" alt="{{ beer.name }} 酒标或照片">{% else %}<div class="image-placeholder collection-placeholder">暂无图片</div>{% endif %}
-          <div class="collection-card-body"><p class="meta-line">{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }}</p><h2>{{ beer.name }}</h2><p class="collection-brand">{{ beer.brand|default:"未填写品牌" }}</p><p class="collection-style">{{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</p><div class="collection-stats"><span>{% if beer.average_score is not None %}★ {{ beer.average_score|floatformat:1 }}{% else %}未评分{% endif %}</span><span>{{ beer.tasting_count }} 次品饮</span></div><div class="tag-list">{% for link in beer.flavor_tag_links.all %}<span class="tag">{{ link.tag.name }}</span>{% endfor %}</div></div>
+          <div class="collection-image-frame">{% if beer.cover_photo %}<img class="collection-image progressive-image" src="{% url 'photo-file' beer.cover_photo.id 'thumbnail' %}" alt="{{ beer.name }} 酒标或照片">{% else %}<div class="image-placeholder collection-placeholder">暂无图片</div>{% endif %}{% if beer.is_recently_tasted or beer.is_highly_rated or beer.is_new_collection %}<div class="collection-statuses">{% if beer.is_recently_tasted %}<span class="collection-status status-recent">最近品饮</span>{% endif %}{% if beer.is_highly_rated %}<span class="collection-status status-score">高评分</span>{% endif %}{% if beer.is_new_collection %}<span class="collection-status status-new">新收藏</span>{% endif %}</div>{% endif %}</div>
+          <div class="collection-card-body"><p class="meta-line">{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }}</p><h2>{{ beer.name }}</h2><p class="collection-brand">{{ beer.brand|default:"未填写品牌" }}</p><p class="collection-style">{{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</p><div class="collection-stats"><span>{% if beer.average_score is not None %}★ {{ beer.average_score|floatformat:1 }}{% else %}未评分{% endif %}</span><span>{{ beer.tasting_count }} 次品饮</span></div><div class="tag-list collection-tag-list">{% for link in beer.flavor_tag_links.all %}<span class="tag">✦ {{ link.tag.name }}</span>{% endfor %}</div></div>
         </a>
       </article>
     {% empty %}

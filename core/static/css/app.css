@@ -211,6 +211,48 @@ dd { margin: 0; }
 .hero h1 { margin: 8px 0; font-size: 2rem; letter-spacing: -.045em; }
 .hero p { color: var(--muted); line-height: 1.55; }
 
+/* v3.0-B1 collection home */
+.collection-hero { position: relative; overflow: hidden; padding: 24px 22px 21px; background: linear-gradient(135deg, #fffdf9, #ffffff 62%, #fff4e2); }
+.collection-hero::after { position: absolute; top: -42px; right: -35px; width: 136px; height: 136px; border-radius: 50%; background: rgba(244, 163, 64, .15); content: ""; }
+.collection-hero-copy { position: relative; z-index: 1; }
+.collection-hero-copy h1 { margin: 0; max-width: 9ch; font-size: clamp(2.35rem, 11vw, 3.6rem); letter-spacing: -.07em; line-height: .96; }
+.collection-hero-copy > p:last-child { max-width: 18rem; margin: 10px 0 20px; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.collection-overview { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.collection-overview div { min-width: 0; padding: 11px 10px; border-radius: 16px; background: rgba(255, 255, 255, .86); box-shadow: 0 4px 14px rgba(24, 25, 27, .04); }
+.collection-overview strong { display: block; color: var(--ink); font-size: clamp(1.25rem, 6vw, 1.7rem); letter-spacing: -.05em; line-height: 1; }
+.collection-overview div:first-child strong { color: #b67010; }
+.collection-overview div:nth-child(2) strong { color: #197754; }
+.collection-overview div:nth-child(3) strong { color: var(--blue); }
+.collection-overview span { display: block; margin-top: 6px; color: var(--muted); font-size: .69rem; font-weight: 700; white-space: nowrap; }
+.collection-tools { display: grid; gap: 10px; margin: 17px 0 21px; }
+.collection-tools .collection-search { position: relative; margin: 0; padding-left: 36px; background: var(--surface); box-shadow: var(--shadow-card); }
+.search-glyph { position: absolute; left: 15px; z-index: 1; color: var(--subtle); font-size: 1.2rem; line-height: 1; pointer-events: none; }
+.collection-tools .collection-search input { padding-left: 4px; }
+.collection-tools .collection-search button { flex-basis: auto; width: auto; min-width: 56px; margin-right: 5px; padding: 0 12px; border-radius: 13px; background: var(--accent-soft); color: #a85f00; font-size: .77rem; font-weight: 800; }
+.filter-chip { min-height: 46px; margin: 0; padding: 9px 15px; border-radius: var(--radius-pill); box-shadow: none; }
+.filter-chip > span:last-child { margin-left: auto; font-size: 1rem; }
+.filter-chip b { margin-left: 8px; padding: 4px 8px; border-radius: var(--radius-pill); background: var(--blue-soft); color: #385bb8; font-size: .72rem; }
+.collection-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 2px 12px; }
+.collection-section-heading h2 { margin: 0; font-size: 1.2rem; letter-spacing: -.03em; }
+.collection-section-heading span { color: var(--muted); font-size: .82rem; font-weight: 700; }
+.collection-grid { gap: 18px; }
+.collection-card { border-radius: 26px; }
+.collection-image-frame { position: relative; overflow: hidden; background: var(--surface-soft); }
+.collection-image { height: 272px; }
+.collection-placeholder { min-height: 146px; }
+.collection-statuses { position: absolute; right: 12px; bottom: 12px; left: 12px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.collection-status { min-height: 27px; display: inline-flex; align-items: center; padding: 4px 9px; border: 1px solid rgba(255, 255, 255, .58); border-radius: var(--radius-pill); background: rgba(255, 255, 255, .87); box-shadow: 0 4px 12px rgba(24, 25, 27, .09); color: var(--ink); font-size: .7rem; font-weight: 800; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.status-recent { color: #14764f; }
+.status-score { color: #a85f00; }
+.status-new { color: #6f52d7; }
+.collection-card-body { padding: 19px 19px 21px; }
+.collection-card-body h2 { margin-top: 7px; font-size: 1.55rem; }
+.collection-brand { font-weight: 600; }
+.collection-stats { margin-top: 17px; padding: 11px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.collection-tag-list { min-height: 0; margin-top: 13px; }
+.collection-tag-list:empty { display: none; }
+.collection-tag-list .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 640px) {
   .app-header { padding-right: 28px; padding-left: 28px; }

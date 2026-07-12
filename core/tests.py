@@ -60,10 +60,10 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_v3_design_assets(self):
+    def test_base_template_uses_versioned_v3_collection_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260712-v3a")
-        self.assertContains(response, "js/app.js?v=20260712-v3a")
+        self.assertContains(response, "css/app.css?v=20260712-v3b1")
+        self.assertContains(response, "js/app.js?v=20260712-v3b1")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -416,6 +416,26 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertLess(by_score.index(highest.name), by_score.index(newest.name))
         by_count = self.client.get("/beers/", {"sort": "count"}).content.decode()
         self.assertLess(by_count.index(newest.name), by_count.index(highest.name))
+
+    def test_collection_home_shows_global_overview_and_read_only_visual_states(self):
+        now = timezone.now()
+        recent_high = Beer.objects.create(name="近期高分收藏", style=self.style, origin_country_code="DE")
+        older = Beer.objects.create(name="较早收藏", style=self.style, origin_country_code="CN")
+        Beer.objects.filter(id=older.id).update(created_at=now - timedelta(days=31))
+        Tasting.objects.create(beer=recent_high, tasted_at=now - timedelta(days=1), overall_score=Decimal("9.0"))
+        Tasting.objects.create(beer=older, tasted_at=now - timedelta(days=40), overall_score=Decimal("7.0"))
+
+        response = self.client.get("/beers/", {"q": "近期"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["collection_stats"]["beer_count"], 2)
+        self.assertEqual(response.context["collection_stats"]["tasting_count"], 2)
+        self.assertEqual(response.context["collection_stats"]["average_score"], Decimal("8.0"))
+        self.assertContains(response, "款收藏")
+        self.assertContains(response, "次品饮")
+        self.assertContains(response, "最近品饮")
+        self.assertContains(response, "高评分")
+        self.assertContains(response, "新收藏")
+        self.assertNotContains(response, older.name)
 
     def test_personal_data_statistics_exclude_deleted_records_and_sort_recent_tastings(self):
         citrus = FlavorTag.objects.create(name="数据柑橘", normalized_name="insight-citrus", category="自定义")
