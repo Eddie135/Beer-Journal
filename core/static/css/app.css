@@ -85,6 +85,6 @@ button, input, select, textarea { font: inherit; }
 .photo-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; } .photo-grid img { width: 100%; aspect-ratio: 1; display: block; object-fit: cover; border-radius: 16px; }
 .empty-state { padding: 36px 24px; text-align: center; } .empty-state h2 { margin: 8px 0; font-size: 1.25rem; } .empty-state p { color: var(--muted); line-height: 1.55; } .empty-icon { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 1.5rem; } .personal-placeholder { margin-top: 60px; }
 
-@keyframes page-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 640px) { .app-header { padding-left: 28px; padding-right: 28px; } .app-content { padding-left: 28px; padding-right: 28px; } .beer-grid, .collection-grid { grid-template-columns: repeat(2, 1fr); } .card-image { height: 210px; } .detail-grid { grid-template-columns: repeat(2, 1fr); } .filter-grid { grid-template-columns: repeat(2, 1fr); } .insight-grid { grid-template-columns: repeat(4, 1fr); } .average-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; } }

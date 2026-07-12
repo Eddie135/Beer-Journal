@@ -1,4 +1,4 @@
-document.addEventListener("DOMContentLoaded", () => {
+const initializeApp = () => {
   document.querySelectorAll(".progressive-image").forEach((image) => {
     const reveal = () => image.classList.add("is-loaded");
     if (image.complete) reveal();
@@ -52,4 +52,10 @@ document.addEventListener("DOMContentLoaded", () => {
     closeButton?.addEventListener("click", close);
     overlay?.addEventListener("click", close);
   });
-});
+};
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initializeApp, { once: true });
+} else {
+  initializeApp();
+}

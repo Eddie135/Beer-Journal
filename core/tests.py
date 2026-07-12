@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
@@ -647,3 +648,19 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertTrue(Tasting.objects.get(id=middle.id).deleted_at)
         self.assertIsNone(Tasting.objects.get(id=oldest.id).deleted_at)
         self.assertIsNone(Tasting.objects.get(id=newest.id).deleted_at)
+
+    def test_mobile_filter_assets_keep_fixed_elements_viewport_bound(self):
+        response = self.client.get("/beers/")
+        self.assertContains(response, 'data-filter-open')
+        self.assertContains(response, 'data-filter-sheet')
+        self.assertContains(response, 'js/app.js?')
+        self.assertContains(response, 'css/app.css?')
+
+        static_root = Path(settings.BASE_DIR) / "core" / "static"
+        stylesheet = (static_root / "css" / "app.css").read_text(encoding="utf-8")
+        script = (static_root / "js" / "app.js").read_text(encoding="utf-8")
+        self.assertIn(".floating-add-button { position: fixed;", stylesheet)
+        self.assertIn(".filter-sheet { position: fixed;", stylesheet)
+        self.assertIn("@keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }", stylesheet)
+        self.assertIn('document.querySelector("[data-filter-open]")', script)
+        self.assertIn('document.readyState === "loading"', script)
