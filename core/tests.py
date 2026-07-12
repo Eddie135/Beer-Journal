@@ -60,10 +60,10 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_v3_collection_assets(self):
+    def test_base_template_uses_versioned_v3_collection_card_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260712-v3b1")
-        self.assertContains(response, "js/app.js?v=20260712-v3b1")
+        self.assertContains(response, "css/app.css?v=20260712-v3b2")
+        self.assertContains(response, "js/app.js?v=20260712-v3b2")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -395,7 +395,7 @@ class PublicWorkflowTests(TransactionTestCase):
         content = response.content.decode()
         self.assertLess(content.index(newest.name), content.index(highest.name))
         self.assertLess(content.index(highest.name), content.index(no_tasting.name))
-        self.assertIn("★ 8.0", content)
+        self.assertIn('<div class="collection-rating"><span class="rating-star" aria-hidden="true">★</span><strong>8.0</strong>', content)
         self.assertIn("2 次品饮", content)
 
         for query, expected, excluded in (
@@ -436,6 +436,26 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(response, "高评分")
         self.assertContains(response, "新收藏")
         self.assertNotContains(response, older.name)
+
+    def test_collection_card_prioritizes_rating_and_limits_flavor_tags(self):
+        beer = Beer.objects.create(name="精修卡片啤酒", style=self.style, origin_country_code="DE")
+        Tasting.objects.create(beer=beer, tasted_at=timezone.now(), overall_score=Decimal("8.5"))
+        tags = [
+            FlavorTag.objects.create(name=f"标签{i}", normalized_name=f"card-tag-{i}", category=category)
+            for i, category in enumerate(("水果", "麦芽", "酒花", "烘烤"), start=1)
+        ]
+        for tag in tags:
+            BeerFlavorTag.objects.create(beer=beer, tag=tag)
+
+        response = self.client.get("/beers/")
+        content = response.content.decode()
+        collection_html = content.split('<section class="collection-grid">', 1)[1].split('</section>', 1)[0]
+        self.assertContains(response, 'class="collection-rating"')
+        self.assertContains(response, 'class="collection-tasting-count"')
+        self.assertEqual(collection_html.count("tag-pill"), 3)
+        self.assertIn("标签1", collection_html)
+        self.assertIn("标签3", collection_html)
+        self.assertNotIn("标签4", collection_html)
 
     def test_personal_data_statistics_exclude_deleted_records_and_sort_recent_tastings(self):
         citrus = FlavorTag.objects.create(name="数据柑橘", normalized_name="insight-citrus", category="自定义")

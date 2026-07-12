@@ -253,6 +253,34 @@ dd { margin: 0; }
 .collection-tag-list:empty { display: none; }
 .collection-tag-list .tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* v3.0-B2 collection card refinement */
+.collection-card { isolation: isolate; }
+.collection-card-link:focus-visible { display: block; outline: 3px solid rgba(91, 140, 255, .5); outline-offset: 3px; border-radius: 26px; }
+.collection-card:active { transform: scale(.978); box-shadow: 0 4px 16px rgba(24, 25, 27, .08); }
+.collection-image-frame { min-height: 146px; }
+.collection-image { height: 286px; transition: opacity var(--motion) var(--ease), transform var(--motion-slow) var(--ease), filter var(--motion-slow) var(--ease); }
+.collection-card:hover .collection-image { filter: saturate(1.04); }
+.collection-placeholder { min-height: 168px; align-content: center; gap: 6px; background: radial-gradient(circle at 68% 25%, rgba(244, 163, 64, .2), transparent 30%), linear-gradient(135deg, #f4f3ef, #e9eae7); }
+.collection-placeholder span { color: var(--accent); font-size: 2rem; line-height: 1; }
+.collection-placeholder small { color: var(--muted); font-size: .78rem; font-weight: 700; }
+.collection-card-body { padding: 20px 20px 19px; }
+.collection-card-body h2 { margin: 0 0 6px; font-size: clamp(1.5rem, 7vw, 1.78rem); line-height: 1.08; }
+.collection-brand { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .94rem; }
+.collection-country { margin-top: 15px; color: var(--ink); font-size: .83rem; }
+.collection-style { margin-top: 4px; font-size: .86rem; }
+.collection-rating { display: inline-grid; grid-template-columns: auto auto; column-gap: 7px; align-items: center; margin-top: 17px; padding: 10px 13px 9px; border-radius: 15px; background: linear-gradient(135deg, #fff2dc, #fff9ef); color: #9a5900; }
+.rating-star { grid-row: span 2; color: var(--accent); font-size: 1.24rem; line-height: 1; text-shadow: 0 3px 8px rgba(244, 163, 64, .25); }
+.collection-rating strong { font-size: 1.35rem; letter-spacing: -.045em; line-height: 1; }
+.collection-rating small { color: #a97431; font-size: .68rem; font-weight: 750; line-height: 1.15; }
+.collection-tag-list { gap: 7px; min-height: 0; margin-top: 15px; }
+.collection-tag-list .tag { min-height: 29px; padding: 5px 10px; border: 0; font-size: .76rem; font-weight: 750; }
+.collection-tag-list .tag-pill { background: #eef0f0; color: #596066; }
+.collection-tag-list .tag-fruit { background: var(--berry-soft); color: #b44c61; }
+.collection-tag-list .tag-malt { background: var(--accent-soft); color: #9d610e; }
+.collection-tag-list .tag-hop { background: var(--fresh-soft); color: #197754; }
+.collection-tag-list .tag-roast { background: #eee7e3; color: #725446; }
+.collection-tasting-count { margin: 15px 0 0; padding-top: 13px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; font-weight: 750; }
+
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 640px) {
   .app-header { padding-right: 28px; padding-left: 28px; }
