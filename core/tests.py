@@ -62,6 +62,19 @@ class HealthPageTests(TestCase):
         for name in ("beer_detail.html", "beer_edit.html", "tasting_detail.html", "tasting_edit.html"):
             self.assertNotIn("floating-add-button", (template_root / name).read_text(encoding="utf-8"))
 
+    def test_collection_filter_sheet_and_fab_have_mobile_interaction_hooks(self):
+        response = self.client.get("/beers/")
+        self.assertContains(response, "data-filter-open")
+        self.assertContains(response, "data-filter-sheet")
+        self.assertContains(response, "data-filter-overlay")
+        self.assertNotContains(response, '<details class="filter-sheet"')
+        stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")
+        script = (Path(__file__).parent / "static" / "js" / "app.js").read_text(encoding="utf-8")
+        self.assertIn("position: fixed", stylesheet)
+        self.assertIn("body.filter-sheet-open .bottom-tab-bar", stylesheet)
+        self.assertIn("collection-placeholder { min-height: 132px", stylesheet)
+        self.assertIn("data-filter-sheet", script)
+
     def test_health_endpoint(self):
         response = self.client.get("/health/")
         self.assertEqual(response.status_code, 200)

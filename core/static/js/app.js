@@ -31,4 +31,25 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
   });
+
+  document.querySelectorAll("[data-filter-sheet]").forEach((sheet) => {
+    const overlay = document.querySelector("[data-filter-overlay]");
+    const openButton = document.querySelector("[data-filter-open]");
+    const closeButton = sheet.querySelector("[data-filter-close]");
+    const close = () => {
+      sheet.classList.remove("is-open");
+      overlay?.classList.remove("is-open");
+      document.body.classList.remove("filter-sheet-open");
+      sheet.setAttribute("aria-hidden", "true");
+    };
+    const open = () => {
+      sheet.classList.add("is-open");
+      overlay?.classList.add("is-open");
+      document.body.classList.add("filter-sheet-open");
+      sheet.setAttribute("aria-hidden", "false");
+    };
+    openButton?.addEventListener("click", open);
+    closeButton?.addEventListener("click", close);
+    overlay?.addEventListener("click", close);
+  });
 });

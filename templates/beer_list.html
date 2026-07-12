@@ -8,8 +8,10 @@
     <label class="visually-hidden" for="beer-query">搜索啤酒</label><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索名称、品牌、酒厂、国家或风味"><button type="submit" aria-label="搜索">⌕</button>
   </form>
 
-  <details class="filter-sheet"{% if filters.category or filters.style or filters.country or filters.mouthfeel or filters.tag or filters.min_score or filters.max_score or filters.sort != "latest" %} open{% endif %}>
-    <summary><span>筛选与排序</span><span class="filter-sheet-hint">轻触展开</span></summary>
+  <button class="filter-trigger" type="button" data-filter-open><span>筛选与排序</span><span>⌄</span></button>
+  <div class="filter-overlay" data-filter-overlay></div>
+  <section class="filter-sheet" data-filter-sheet aria-hidden="true" aria-label="筛选与排序">
+    <div class="filter-sheet-header"><span>筛选与排序</span><button type="button" data-filter-close aria-label="关闭筛选">×</button></div>
     <form method="get" class="collection-filters">
       <input type="hidden" name="q" value="{{ filters.q }}">
       <div class="filter-grid">
@@ -24,7 +26,7 @@
       </div>
       <div class="filter-actions"><a href="{% url 'beer-list' %}">清除</a><button class="button" type="submit">应用筛选</button></div>
     </form>
-  </details>
+  </section>
 
   <section class="collection-grid">
     {% for beer in beers %}
