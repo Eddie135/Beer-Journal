@@ -61,6 +61,57 @@ class MultipleFileField(forms.FileField):
         return [single_file_clean(item, initial) for item in data]
 
 
+class BeerSelectionForm(forms.Form):
+    beer = forms.ModelChoiceField(
+        label="选择啤酒",
+        queryset=Beer.objects.none(),
+        empty_label=None,
+        widget=forms.RadioSelect,
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["beer"].queryset = (
+            Beer.objects.filter(deleted_at__isnull=True)
+            .select_related("style", "style__category")
+            .order_by("name", "id")
+        )
+
+
+class DailyTastingForm(forms.Form):
+    tasted_at = forms.DateTimeField(
+        label="饮用时间",
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+        input_formats=["%Y-%m-%dT%H:%M"],
+        initial=timezone.localtime,
+    )
+    drinking_location = forms.CharField(label="地点", max_length=255, required=False)
+    overall_score = forms.DecimalField(label="总评分（0–10，0.5 步进）", max_digits=3, decimal_places=1, required=False, min_value=Decimal("0"), max_value=Decimal("10"))
+    notes = forms.CharField(label="品饮笔记", required=False, widget=forms.Textarea)
+    capacity = forms.IntegerField(label="容量（ml）", required=False, min_value=1)
+    bottle_count = forms.DecimalField(label="饮用瓶数", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0.01"))
+    purchase_channel = forms.ChoiceField(label="购买渠道", required=False, choices=(("", "未填写"),) + Tasting.PURCHASE_CHANNEL_CHOICES)
+    photos = MultipleFileField(label="照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
+
+    def clean_overall_score(self):
+        score = self.cleaned_data.get("overall_score")
+        if score is not None and not CreateBeerTastingForm._is_step(score, Decimal("0"), Decimal("0.5")):
+            raise forms.ValidationError("总评分必须以 0.5 为步进。")
+        return score
+
+    def save(self, beer):
+        return Tasting.objects.create(
+            beer=beer,
+            tasted_at=self.cleaned_data["tasted_at"],
+            drinking_location=self.cleaned_data["drinking_location"],
+            overall_score=self.cleaned_data["overall_score"],
+            notes=self.cleaned_data["notes"],
+            capacity=self.cleaned_data["capacity"],
+            bottle_count=self.cleaned_data["bottle_count"],
+            purchase_channel=self.cleaned_data["purchase_channel"],
+        )
+
+
 class CreateBeerTastingForm(forms.Form):
     name = forms.CharField(label="啤酒名称", max_length=200)
     brand_name = forms.CharField(label="品牌", max_length=200, required=False)

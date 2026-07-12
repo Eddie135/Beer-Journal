@@ -339,6 +339,69 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(tasting_response.status_code, 200)
         self.assertContains(tasting_response, "烧烤")
 
+    def test_tasting_timeline_and_beer_selection_search_are_available(self):
+        beer = Beer.objects.create(name="搜索用 IPA", style=self.style, origin_country_code="DE")
+        tasting = Tasting.objects.create(
+            beer=beer,
+            tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)),
+            capacity=500,
+            bottle_count=Decimal("1.00"),
+            overall_score=Decimal("8.0"),
+            notes="柑橘与松脂的余味很干净。",
+        )
+        list_response = self.client.get("/tastings/")
+        self.assertContains(list_response, "搜索用 IPA")
+        self.assertContains(list_response, "500 ml")
+        self.assertContains(list_response, "1.00 瓶")
+        self.assertContains(list_response, 'href="/tastings/add/"')
+
+        selection_response = self.client.get("/tastings/add/")
+        self.assertEqual(selection_response.status_code, 200)
+        self.assertContains(selection_response, "data-beer-search")
+        self.assertContains(selection_response, beer.name)
+        response = self.client.post("/tastings/add/", {"beer": str(beer.id)})
+        self.assertRedirects(response, f"/beers/{beer.id}/tastings/add/", fetch_redirect_response=False)
+        self.assertEqual(Tasting.objects.filter(id=tasting.id).count(), 1)
+
+    def test_daily_tasting_creates_for_existing_beer_with_photo(self):
+        beer = Beer.objects.create(name="日常记录啤酒", style=self.style, origin_country_code="CN")
+        form_response = self.client.get(f"/beers/{beer.id}/tastings/add/")
+        self.assertEqual(form_response.status_code, 200)
+        self.assertNotContains(form_response, 'name="food_tags"')
+        self.assertNotContains(form_response, 'name="occasion_tags"')
+        self.assertNotContains(form_response, 'name="rating_')
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            response = self.client.post(
+                f"/beers/{beer.id}/tastings/add/",
+                {
+                    "tasted_at": "2026-07-16T20:30",
+                    "drinking_location": "家中",
+                    "overall_score": "8.5",
+                    "notes": "晚餐后的轻松一杯。",
+                    "capacity": "330",
+                    "bottle_count": "1.00",
+                    "purchase_channel": "online",
+                    "photos": [self._image_upload("daily.png")],
+                },
+            )
+            self.assertEqual(response.status_code, 302)
+            tasting = beer.tastings.get()
+            self.assertEqual(tasting.capacity, 330)
+            self.assertEqual(tasting.bottle_count, Decimal("1.00"))
+            self.assertEqual(tasting.purchase_channel, "online")
+            self.assertEqual(tasting.overall_score, Decimal("8.5"))
+            self.assertEqual(tasting.photos.count(), 1)
+            self.assertTrue((Path(media_root) / tasting.photos.get().storage_key).is_file())
+
+    def test_new_beer_from_tasting_flow_creates_first_tasting(self):
+        payload = self._valid_payload()
+        payload["from_tasting"] = "1"
+        response = self.client.post("/beers/add/?from=tasting", payload)
+        self.assertEqual(response.status_code, 302)
+        beer = Beer.objects.get(name="用户流程 IPA")
+        tasting = beer.tastings.get()
+        self.assertRedirects(response, f"/tastings/{tasting.id}/", fetch_redirect_response=False)
+
     def _image_upload(self, name="label.png"):
         image_bytes = BytesIO()
         Image.new("RGB", (1200, 800), color=(30, 120, 60)).save(image_bytes, format="PNG")

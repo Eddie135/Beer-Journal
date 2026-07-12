@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import BeerEditForm, CreateBeerTastingForm, TastingEditForm
+from .forms import BeerEditForm, BeerSelectionForm, CreateBeerTastingForm, DailyTastingForm, TastingEditForm
 from .models import Beer, Photo, Tasting
 from .photo_service import PhotoProcessingError, create_photos, delete_photo_keys
 
@@ -40,6 +40,13 @@ def tasting_list(request):
     return render(request, "tasting_list.html", {"tastings": tastings})
 
 
+def start_tasting(request):
+    form = BeerSelectionForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        return redirect("tasting-add", beer_id=form.cleaned_data["beer"].id)
+    return render(request, "tasting_select.html", {"form": form, "beers": form.fields["beer"].queryset})
+
+
 def personal_data(request):
     return render(request, "personal_data.html")
 
@@ -52,12 +59,14 @@ def create_beer_tasting(request):
                 with transaction.atomic():
                     beer, tasting = form.create_records()
                     create_photos(tasting, form.cleaned_data["photos"])
+                if request.POST.get("from_tasting") == "1":
+                    return redirect("tasting-detail", tasting_id=tasting.id)
                 return redirect("beer-detail", beer_id=beer.id)
             except PhotoProcessingError as exc:
                 form.add_error("photos", str(exc))
     else:
         form = CreateBeerTastingForm()
-    return render(request, "beer_form.html", {"form": form})
+    return render(request, "beer_form.html", {"form": form, "from_tasting": request.GET.get("from") == "tasting" or request.POST.get("from_tasting") == "1"})
 
 
 def beer_detail(request, beer_id):
@@ -77,13 +86,13 @@ def beer_detail(request, beer_id):
 
 def create_tasting(request, beer_id):
     beer = get_object_or_404(Beer.objects.filter(deleted_at__isnull=True), id=beer_id)
-    form = TastingEditForm(request.POST or None, request.FILES or None)
+    form = DailyTastingForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
         try:
             with transaction.atomic():
                 tasting = form.save(beer=beer)
                 create_photos(tasting, form.cleaned_data["photos"])
-            return redirect("beer-detail", beer_id=beer.id)
+            return redirect("tasting-detail", tasting_id=tasting.id)
         except PhotoProcessingError as exc:
             form.add_error("photos", str(exc))
     return render(request, "tasting_create.html", {"form": form, "beer": beer})

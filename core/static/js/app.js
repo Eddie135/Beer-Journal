@@ -20,4 +20,15 @@ document.addEventListener("DOMContentLoaded", () => {
     categorySelect.addEventListener("change", filterStyles);
     filterStyles();
   });
+
+  document.querySelectorAll("[data-beer-search]").forEach((searchField) => {
+    const form = searchField.closest("form");
+    const items = form?.querySelectorAll("[data-beer-picker-item]") || [];
+    searchField.addEventListener("input", () => {
+      const term = searchField.value.trim().toLocaleLowerCase("zh-CN");
+      items.forEach((item) => {
+        item.hidden = Boolean(term) && !item.dataset.searchText.includes(term);
+      });
+    });
+  });
 });

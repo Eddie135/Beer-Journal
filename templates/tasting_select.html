@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load beer_extras %}
+{% block title %}选择啤酒 · BEER JOURNAL{% endblock %}
+{% block content %}
+  <section class="screen-heading"><p class="screen-kicker">NEW TASTING</p><h1>选择一款啤酒</h1><p>找到它后，马上记录这次饮用。</p></section>
+  <form method="post" class="beer-picker-form record-form">
+    {% csrf_token %}
+    <label class="search-field" for="beer-search">按名称搜索</label>
+    <input id="beer-search" type="search" placeholder="输入啤酒名称" autocomplete="off" data-beer-search>
+    {% if form.beer.errors %}<div class="form-errors">{{ form.beer.errors }}</div>{% endif %}
+    <div class="beer-picker-list" data-beer-picker-list>
+      {% for beer in beers %}
+        <label class="beer-picker-card app-card" data-beer-picker-item data-search-text="{{ beer.name|lower }}">
+          <input type="radio" name="beer" value="{{ beer.id }}" required>
+          <span class="picker-copy"><strong>{{ beer.name }}</strong><small>{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }} · {{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</small></span><span class="picker-check">✓</span>
+        </label>
+      {% empty %}
+        <p class="muted">还没有可选的啤酒。</p>
+      {% endfor %}
+    </div>
+    <button class="button" type="submit">继续记录</button>
+  </form>
+  <section class="new-beer-callout app-card"><h2>没有这款啤酒？</h2><p>先补充啤酒资料，保存后会同时创建第一次饮用记录。</p><a class="button button-secondary" href="{% url 'beer-add' %}?from=tasting">创建新啤酒</a></section>
+{% endblock %}
