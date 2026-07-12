@@ -3,6 +3,7 @@ from django.contrib import admin
 from .forms import TastingRatingValueAdminForm
 from .models import (
     Beer,
+    BeerCategory,
     BeerFlavorTag,
     BeerStyle,
     Brand,
@@ -47,6 +48,14 @@ class TastingTagInline(admin.TabularInline):
 class BeerStyleAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active", "deleted_at")
     search_fields = ("name", "normalized_name")
+    list_filter = ("category", "is_active", "deleted_at")
+    autocomplete_fields = ("category",)
+
+
+@admin.register(BeerCategory)
+class BeerCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "code", "sort_order", "is_active", "deleted_at")
+    search_fields = ("name", "code", "normalized_name")
 
 
 @admin.register(Brand)
@@ -88,7 +97,7 @@ class TastingAdmin(admin.ModelAdmin):
     readonly_fields = ("id", "created_at", "updated_at")
     inlines = (TastingPhotoInline, TastingRatingInline, TastingTagInline)
     fieldsets = (
-        ("品饮信息", {"fields": (("beer", "tasted_at"), ("drinking_location", "volume_ml"), ("notes", "overall_score"))}),
+        ("品饮信息", {"fields": (("beer", "tasted_at"), ("drinking_location", "capacity", "bottle_count"), ("notes", "overall_score"))}),
         ("购买信息", {"fields": (("price_amount", "currency_code"), ("purchase_channel", "purchase_location"))}),
         ("记录状态", {"fields": ("id", "created_at", "updated_at", "deleted_at"), "classes": ("collapse",)}),
     )

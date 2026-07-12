@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from core.models import (
     Beer,
+    BeerCategory,
     BeerFlavorTag,
     BeerStyle,
     Brand,
@@ -23,11 +24,14 @@ class Command(BaseCommand):
     help = "创建用于 Django Admin 验证的个人啤酒演示数据。"
 
     def handle(self, *args, **options):
+        categories = {}
+        for code, name in (("lager", "Lager"), ("ale", "Ale")):
+            categories[code], _ = BeerCategory.objects.get_or_create(code=code, defaults={"name": name, "normalized_name": name.casefold()})
         styles = {}
-        for name, normalized in (("Lager", "lager"), ("IPA", "ipa"), ("小麦啤酒", "wheat")):
+        for name, normalized, category in (("Lager", "lager", "lager"), ("IPA", "ipa", "ale"), ("小麦啤酒", "wheat", "ale")):
             styles[normalized], _ = BeerStyle.objects.get_or_create(
                 normalized_name=normalized,
-                defaults={"name": name},
+                defaults={"name": name, "category": categories[category]},
             )
 
         sources = [
@@ -101,10 +105,10 @@ class Command(BaseCommand):
                 tasted_at=timezone.make_aware(tasted_at),
                 defaults={
                     "drinking_location": "家中",
-                    "volume_ml": 500,
+                    "capacity": 500,
                     "price_amount": Decimal("22.00"),
                     "currency_code": "CNY",
-                    "purchase_channel": "超市",
+                    "purchase_channel": "offline",
                     "notes": "Admin 演示品饮记录。",
                     "overall_score": score,
                 },

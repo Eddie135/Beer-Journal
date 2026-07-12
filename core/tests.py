@@ -5,6 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import IntegrityError
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import override_settings
 from django.utils import timezone
@@ -14,6 +15,7 @@ from config.settings import parse_allowed_hosts
 
 from .models import (
     Beer,
+    BeerCategory,
     BeerFlavorTag,
     BeerStyle,
     FlavorTag,
@@ -43,19 +45,39 @@ class HealthPageTests(SimpleTestCase):
 
 class CoreModelTests(TestCase):
     def setUp(self):
-        self.style = BeerStyle.objects.create(name="IPA", normalized_name="ipa")
+        self.category, _ = BeerCategory.objects.get_or_create(code="ale", defaults={"name": "Ale", "normalized_name": "ale"})
+        self.style = BeerStyle.objects.create(name="IPA", normalized_name="test-ipa", category=self.category)
         self.beer = Beer.objects.create(
             name="测试 IPA",
             style=self.style,
             abv=Decimal("6.50"),
             ibu=Decimal("45.00"),
             color_ebc=Decimal("12.00"),
+            plato=Decimal("15.00"),
+            mouthfeel_profile="balanced",
         )
 
     def test_create_beer(self):
         self.assertEqual(Beer.objects.count(), 1)
         self.assertEqual(self.beer.style, self.style)
         self.assertEqual(self.beer.abv, Decimal("6.50"))
+        self.assertEqual(self.beer.plato, Decimal("15.00"))
+        self.assertEqual(self.beer.mouthfeel_profile, "balanced")
+
+    def test_v2_categories_and_tasting_fields(self):
+        tasting = Tasting.objects.create(
+            beer=self.beer,
+            tasted_at=timezone.make_aware(datetime(2026, 7, 12, 20, 30)),
+            capacity=500,
+            bottle_count=Decimal("1.00"),
+            purchase_channel="online",
+        )
+        self.assertEqual(self.beer.style.category.code, "ale")
+        self.assertEqual(tasting.capacity, 500)
+        self.assertEqual(tasting.bottle_count, Decimal("1.00"))
+        self.assertEqual(tasting.purchase_channel, "online")
+        self.assertTrue(BeerStyle.objects.filter(normalized_name__in=["pilsner", "pale_lager", "dark_lager", "ipa", "wheat", "stout"]).count() >= 6)
+        self.assertEqual(BeerStyle.objects.get(normalized_name="ipa").category.code, "ale")
 
     def test_create_tasting_is_independent(self):
         tasting = Tasting.objects.create(
@@ -79,6 +101,12 @@ class CoreModelTests(TestCase):
         link = BeerFlavorTag.objects.create(beer=self.beer, tag=tag)
         self.assertEqual(self.beer.flavor_tag_links.get(), link)
         self.assertEqual(tag.beer_links.get(), link)
+
+    def test_flavor_tag_normalization_and_unique_constraint(self):
+        self.assertEqual(FlavorTag.normalize_name("  Citrus  "), "citrus")
+        FlavorTag.objects.create(name="Citrus", normalized_name="citrus", category="水果")
+        with self.assertRaises(IntegrityError):
+            FlavorTag.objects.create(name="cItRuS", normalized_name="citrus", category="水果")
 
     def test_rating_dimension_relation_keeps_snapshot(self):
         tasting = Tasting.objects.create(
@@ -106,7 +134,8 @@ class AdminWorkflowTests(TestCase):
     def setUp(self):
         self.admin_user = self._create_admin_user()
         self.client.force_login(self.admin_user)
-        self.style = BeerStyle.objects.create(name="Lager", normalized_name="lager")
+        self.category = BeerCategory.objects.create(name="Lager", normalized_name="admin-lager", code="admin-lager")
+        self.style = BeerStyle.objects.create(name="Lager", normalized_name="admin-lager", category=self.category)
         self.dimension = RatingDimension.objects.create(code="aroma_admin", name="香气")
 
     def _create_admin_user(self):
@@ -159,10 +188,10 @@ class AdminWorkflowTests(TestCase):
                 "tasted_at_0": "2026-07-14",
                 "tasted_at_1": "20:00:00",
                 "drinking_location": "家中",
-                "volume_ml": "500",
+                "capacity": "500",
                 "price_amount": "20.00",
                 "currency_code": "CNY",
-                "purchase_channel": "超市",
+                "purchase_channel": "offline",
                 "purchase_location": "测试超市",
                 "notes": "第一次 Admin 流程录入。",
                 "overall_score": "8.0",
@@ -197,7 +226,8 @@ class AdminWorkflowTests(TestCase):
 
 class PublicWorkflowTests(TransactionTestCase):
     def setUp(self):
-        self.style = BeerStyle.objects.create(name="IPA", normalized_name="public-ipa")
+        self.category = BeerCategory.objects.create(name="Ale", normalized_name="public-ale", code="public-ale")
+        self.style = BeerStyle.objects.create(name="IPA", normalized_name="public-ipa", category=self.category)
         self.flavor = FlavorTag.objects.create(name="柑橘", normalized_name="public-柑橘", category="水果")
         self.food = TastingTag.objects.create(name="烧烤", normalized_name="public-烧烤", category="food_pairing")
         self.occasion = TastingTag.objects.create(name="独饮", normalized_name="public-独饮", category="occasion")

@@ -147,11 +147,11 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 | `beer_id` | UUID | 必填、外键 | 对应啤酒 |
 | `tasted_at` | TIMESTAMPTZ | 必填 | 实际饮用日期和时间；界面可只填写日期并补当天默认时间 |
 | `drinking_location` | VARCHAR(255) | 可空 | 饮用地点 |
-| `volume_ml` | INTEGER | 可空 | 本次容量，单位毫升 |
+| `capacity` | INTEGER | 可空 | 本次容量，单位毫升；由旧 `volume_ml` 重命名迁移 |
 | `bottle_count` | NUMERIC(5,2) | 可空 | 本次实际饮用的瓶/罐数量；允许半瓶等非整数 |
 | `price_amount` | NUMERIC(12,2) | 可空 | 本次价格 |
 | `currency_code` | CHAR(3) | 默认 CNY | ISO 4217 货币代码 |
-| `purchase_channel` | VARCHAR(100) | 可空 | 超市、酒吧、网购、朋友赠送等 |
+| `purchase_channel` | VARCHAR(100) | 可空 | `online`、`offline`、`gift`；历史旧值按迁移规则保留或映射 |
 | `purchase_location` | VARCHAR(255) | 可空 | 商店、平台或具体地点 |
 | `notes` | TEXT | 可空 | 本次品饮感想 |
 | `overall_score` | NUMERIC(3,1) | 可空 | 用户填写的总体评分 0–10 |
@@ -162,7 +162,7 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 约束：
 
 - `beer_id` 使用限制删除，不能删除 Beer 时静默级联清除全部品饮历史。
-- `volume_ml` 为空或大于 0；`bottle_count` 为空或大于 0。
+- `capacity` 为空或大于 0；`bottle_count` 为空或大于 0。
 - `price_amount` 为空或大于等于 0。
 - `currency_code` 为三个大写英文字母；有价格时必须有货币代码。
 - `overall_score` 为空或位于 0.0–10.0；0.5 步进由表单与模型校验，数据库同时保留范围约束。
@@ -388,6 +388,13 @@ Beer 和首次 Tasting 必须在同一数据库事务中写入。任何必填、
 6. 定期运行孤儿文件检查作为最后保护。
 
 ## 10. JSON、CSV 与完整备份
+
+### v2.0-A 已实施迁移
+
+- `0002` 创建 `beer_categories`，增加 BeerStyle 分类外键、Beer 的 `plato`/`mouthfeel_profile`、Tasting 的 `bottle_count`，并将 `volume_ml` 无损重命名为 `capacity`。
+- `0002` 规范化既有风味标签并合并规范化冲突的关系，映射已知购买渠道旧值；不会删除啤酒、品饮、评分或软删除记录。
+- `0003` 补齐 Lager/Ale 下的六个规范 BeerStyle；已有非标准历史类型继续保留并归入可用分类，不强行改名。
+- 新字段未知值保持 `NULL`；迁移反向操作不删除已创建的分类和标签，优先保护数据。
 
 ### JSON
 

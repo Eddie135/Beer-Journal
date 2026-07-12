@@ -1,4 +1,6 @@
 import uuid
+import re
+import unicodedata
 from decimal import Decimal
 
 from django.core.validators import MaxValueValidator, MinValueValidator, RegexValidator
@@ -22,7 +24,23 @@ class SoftDeletableModel(TimestampedModel):
         abstract = True
 
 
+class BeerCategory(SoftDeletableModel):
+    code = models.CharField(max_length=40, unique=True)
+    name = models.CharField(max_length=80)
+    normalized_name = models.CharField(max_length=80, unique=True)
+    sort_order = models.SmallIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "beer_categories"
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
 class BeerStyle(SoftDeletableModel):
+    category = models.ForeignKey("BeerCategory", on_delete=models.PROTECT, related_name="styles")
     name = models.CharField(max_length=120)
     normalized_name = models.CharField(max_length=120, unique=True)
     description = models.TextField(blank=True)
@@ -86,6 +104,9 @@ class Beer(SoftDeletableModel):
     abv = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00")), MaxValueValidator(Decimal("100.00"))])
     ibu = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))])
     color_ebc = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))])
+    plato = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))])
+    MOUTHFEEL_CHOICES = (("crisp", "清爽"), ("balanced", "适中"), ("full", "醇厚"))
+    mouthfeel_profile = models.CharField(max_length=20, choices=MOUTHFEEL_CHOICES, blank=True)
     catalog_notes = models.TextField(blank=True)
 
     class Meta:
@@ -106,10 +127,12 @@ class Tasting(SoftDeletableModel):
     beer = models.ForeignKey(Beer, on_delete=models.PROTECT, related_name="tastings")
     tasted_at = models.DateTimeField()
     drinking_location = models.CharField(max_length=255, blank=True)
-    volume_ml = models.PositiveIntegerField(null=True, blank=True)
+    capacity = models.PositiveIntegerField(null=True, blank=True)
+    bottle_count = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     price_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     currency_code = models.CharField(max_length=3, default="CNY", validators=[RegexValidator(r"^[A-Z]{3}$", "货币代码必须为三个大写英文字母。")])
-    purchase_channel = models.CharField(max_length=100, blank=True)
+    PURCHASE_CHANNEL_CHOICES = (("online", "线上"), ("offline", "线下"), ("gift", "赠送"))
+    purchase_channel = models.CharField(max_length=100, blank=True, choices=PURCHASE_CHANNEL_CHOICES)
     purchase_location = models.CharField(max_length=255, blank=True)
     notes = models.TextField(blank=True)
     overall_score = models.DecimalField(max_digits=3, decimal_places=1, null=True, blank=True, validators=[MinValueValidator(Decimal("0.0")), MaxValueValidator(Decimal("10.0"))])
@@ -118,7 +141,8 @@ class Tasting(SoftDeletableModel):
         db_table = "tastings"
         ordering = ["-tasted_at", "-created_at", "id"]
         constraints = [
-            models.CheckConstraint(condition=Q(volume_ml__isnull=True) | Q(volume_ml__gt=0), name="tasting_volume_positive"),
+            models.CheckConstraint(condition=Q(capacity__isnull=True) | Q(capacity__gt=0), name="tasting_capacity_positive"),
+            models.CheckConstraint(condition=Q(bottle_count__isnull=True) | Q(bottle_count__gt=0), name="tasting_bottle_count_positive"),
             models.CheckConstraint(condition=Q(price_amount__isnull=True) | Q(price_amount__gte=0), name="tasting_price_non_negative"),
             models.CheckConstraint(condition=Q(overall_score__isnull=True) | Q(overall_score__gte=0, overall_score__lte=10), name="tasting_overall_score_range"),
         ]
@@ -196,6 +220,16 @@ class FlavorTag(TimestampedModel):
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def normalize_name(value):
+        value = unicodedata.normalize("NFKC", value or "")
+        return re.sub(r"\s+", " ", value.strip()).casefold()
+
+    def save(self, *args, **kwargs):
+        if not self.normalized_name:
+            self.normalized_name = self.normalize_name(self.name)
+        super().save(*args, **kwargs)
 
 
 class BeerFlavorTag(TimestampedModel):
