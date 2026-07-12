@@ -84,7 +84,7 @@ class HealthPageTests(TestCase):
 
 class CoreModelTests(TestCase):
     def setUp(self):
-        self.category, _ = BeerCategory.objects.get_or_create(code="ale", defaults={"name": "Ale", "normalized_name": "ale"})
+        self.category, _ = BeerCategory.objects.get_or_create(code="ale", defaults={"name": "艾尔", "normalized_name": "艾尔"})
         self.style = BeerStyle.objects.create(name="IPA", normalized_name="test-ipa", category=self.category)
         self.beer = Beer.objects.create(
             name="测试 IPA",
@@ -115,8 +115,11 @@ class CoreModelTests(TestCase):
         self.assertEqual(tasting.capacity, 500)
         self.assertEqual(tasting.bottle_count, Decimal("1.00"))
         self.assertEqual(tasting.purchase_channel, "online")
+        self.assertEqual(BeerCategory.objects.get(code="lager").name, "拉格")
+        self.assertEqual(BeerCategory.objects.get(code="ale").name, "艾尔")
         self.assertTrue(BeerStyle.objects.filter(normalized_name__in=["pilsner", "pale_lager", "dark_lager", "ipa", "wheat", "stout"]).count() >= 6)
         self.assertEqual(BeerStyle.objects.get(normalized_name="ipa").category.code, "ale")
+        self.assertFalse(BeerStyle.objects.filter(name__iexact="Lager").exists())
 
     def test_create_tasting_is_independent(self):
         tasting = Tasting.objects.create(
@@ -173,9 +176,8 @@ class AdminWorkflowTests(TestCase):
     def setUp(self):
         self.admin_user = self._create_admin_user()
         self.client.force_login(self.admin_user)
-        self.category = BeerCategory.objects.create(name="Lager", normalized_name="admin-lager", code="admin-lager")
-        self.style = BeerStyle.objects.create(name="Lager", normalized_name="admin-lager", category=self.category)
-        self.dimension = RatingDimension.objects.create(code="aroma_admin", name="香气")
+        self.category = BeerCategory.objects.create(name="拉格测试", normalized_name="admin-lager", code="admin-lager")
+        self.style = BeerStyle.objects.create(name="淡色拉格", normalized_name="admin-pale-lager", category=self.category)
 
     def _create_admin_user(self):
         from django.contrib.auth import get_user_model
@@ -240,16 +242,6 @@ class AdminWorkflowTests(TestCase):
                 "photos-INITIAL_FORMS": "0",
                 "photos-MIN_NUM_FORMS": "0",
                 "photos-MAX_NUM_FORMS": "1000",
-                "rating_values-TOTAL_FORMS": "1",
-                "rating_values-INITIAL_FORMS": "0",
-                "rating_values-MIN_NUM_FORMS": "0",
-                "rating_values-MAX_NUM_FORMS": "1000",
-                "rating_values-0-dimension": str(self.dimension.pk),
-                "rating_values-0-value": "8.0",
-                "tag_links-TOTAL_FORMS": "0",
-                "tag_links-INITIAL_FORMS": "0",
-                "tag_links-MIN_NUM_FORMS": "0",
-                "tag_links-MAX_NUM_FORMS": "1000",
                 "_save": "保存",
             },
         )
@@ -259,14 +251,12 @@ class AdminWorkflowTests(TestCase):
             self.fail("Admin tasting form did not save: " + " | ".join(errors))
         tasting = Tasting.objects.get(beer=beer)
         self.assertEqual(Tasting.objects.filter(beer=beer).count(), 1)
-        rating = tasting.rating_values.get()
-        self.assertEqual(rating.dimension_name_snapshot, "香气")
-        self.assertEqual(rating.scale_max_snapshot, Decimal("10.000"))
+        self.assertFalse(tasting.rating_values.exists())
 
 
 class PublicWorkflowTests(TransactionTestCase):
     def setUp(self):
-        self.category = BeerCategory.objects.create(name="Ale", normalized_name="public-ale", code="public-ale")
+        self.category = BeerCategory.objects.create(name="艾尔", normalized_name="public-ale", code="public-ale")
         self.style = BeerStyle.objects.create(name="IPA", normalized_name="public-ipa", category=self.category)
         self.flavor = FlavorTag.objects.create(name="柑橘", normalized_name="public-柑橘", category="水果")
         self.food = TastingTag.objects.create(name="烧烤", normalized_name="public-烧烤", category="food_pairing")
@@ -291,9 +281,6 @@ class PublicWorkflowTests(TransactionTestCase):
             "price_amount": "22.00",
             "overall_score": "8.5",
             "notes": "第一次真实流程测试。",
-            "food_tags": [str(self.food.id)],
-            "occasion_tags": [str(self.occasion.id)],
-            f"rating_{self.dimension.id}": "8.0",
         }
 
     def test_create_page_creates_beer_and_first_tasting_together(self):
@@ -305,8 +292,8 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(beer.plato, Decimal("14.50"))
         self.assertEqual(beer.mouthfeel_profile, "balanced")
         self.assertEqual(beer.flavor_tag_links.count(), 2)
-        self.assertEqual(tasting.rating_values.get().dimension_name_snapshot, "香气")
-        self.assertEqual(tasting.tag_links.count(), 2)
+        self.assertFalse(tasting.rating_values.exists())
+        self.assertFalse(tasting.tag_links.exists())
 
     def test_beer_form_uses_chinese_countries_and_category_matched_styles(self):
         response = self.client.get("/beers/add/")
@@ -314,8 +301,11 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(response, "德国")
         self.assertContains(response, 'data-category-select')
         self.assertContains(response, 'data-style-select')
+        self.assertNotContains(response, "多维评分")
+        self.assertNotContains(response, "食物搭配")
+        self.assertNotContains(response, "饮用场景")
 
-        lager_category = BeerCategory.objects.create(name="Lager", normalized_name="public-lager", code="public-lager")
+        lager_category = BeerCategory.objects.create(name="拉格", normalized_name="public-lager", code="public-lager")
         lager_style = BeerStyle.objects.create(name="皮尔森", normalized_name="public-pilsner", category=lager_category)
         payload = self._valid_payload()
         payload["style"] = str(lager_style.id)
@@ -364,10 +354,12 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(beer_response, "柑橘")
         tasting_response = self.client.get(f"/tastings/{tasting.id}/")
         self.assertEqual(tasting_response.status_code, 200)
-        self.assertContains(tasting_response, "烧烤")
+        self.assertNotContains(tasting_response, "烧烤")
+        self.assertNotContains(tasting_response, "多维评分")
+        self.assertNotContains(tasting_response, "搭配与场景")
 
     def test_collection_search_filters_and_sorting_use_active_tastings(self):
-        lager_category = BeerCategory.objects.create(name="Lager", normalized_name="collection-lager", code="collection-lager")
+        lager_category = BeerCategory.objects.create(name="拉格", normalized_name="collection-lager", code="collection-lager")
         lager_style = BeerStyle.objects.create(name="皮尔森", normalized_name="collection-pilsner", category=lager_category)
         brand = Brand.objects.create(name="收藏品牌", normalized_name="collection-brand", country_code="DE", region="")
         brewery = Brewery.objects.create(name="收藏酒厂", normalized_name="collection-brewery", country_code="DE", region="")
@@ -600,14 +592,18 @@ class PublicWorkflowTests(TransactionTestCase):
         edit_page = self.client.get(f"/tastings/{tasting.id}/edit/")
         self.assertNotContains(edit_page, "多维评分")
         self.assertNotContains(edit_page, 'name="rating_')
+        self.assertNotContains(edit_page, "食物搭配")
+        self.assertNotContains(edit_page, "饮用场景")
+        TastingTagLink.objects.create(tasting=tasting, tag=self.food)
         tasting_response = self.client.post(
             f"/tastings/{tasting.id}/edit/",
-            {"tasted_at": "2026-07-16T20:30", "drinking_location": "酒吧", "price_amount": "30.00", "overall_score": "8.0", "notes": "已编辑", "food_tags": [str(self.food.id)], "occasion_tags": [str(self.occasion.id)], f"rating_{self.dimension.id}": "8.0"},
+            {"tasted_at": "2026-07-16T20:30", "drinking_location": "酒吧", "price_amount": "30.00", "overall_score": "8.0", "notes": "已编辑"},
         )
         self.assertEqual(tasting_response.status_code, 302)
         tasting.refresh_from_db()
         self.assertEqual(tasting.overall_score, Decimal("8.0"))
         self.assertEqual(tasting.rating_values.get().value, Decimal("7.5"))
+        self.assertEqual(tasting.tag_links.get().tag, self.food)
         self.client.post(f"/tastings/{tasting.id}/delete/")
         tasting.refresh_from_db()
         self.assertIsNotNone(tasting.deleted_at)
@@ -631,9 +627,6 @@ class PublicWorkflowTests(TransactionTestCase):
             "price_amount": "25.00",
             "overall_score": "8.0",
             "notes": "第三次",
-            "food_tags": [str(self.food.id)],
-            "occasion_tags": [str(self.occasion.id)],
-            f"rating_{self.dimension.id}": "8.0",
         }
         response = self.client.post(f"/beers/{beer.id}/tastings/add/", payload)
         self.assertEqual(response.status_code, 302)

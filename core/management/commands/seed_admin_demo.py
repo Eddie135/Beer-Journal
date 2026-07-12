@@ -25,10 +25,10 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         categories = {}
-        for code, name in (("lager", "Lager"), ("ale", "Ale")):
-            categories[code], _ = BeerCategory.objects.get_or_create(code=code, defaults={"name": name, "normalized_name": name.casefold()})
+        for code, name in (("lager", "拉格"), ("ale", "艾尔")):
+            categories[code], _ = BeerCategory.objects.update_or_create(code=code, defaults={"name": name, "normalized_name": name})
         styles = {}
-        for name, normalized, category in (("Lager", "lager", "lager"), ("IPA", "ipa", "ale"), ("小麦啤酒", "wheat", "ale")):
+        for name, normalized, category in (("淡色拉格", "pale_lager", "lager"), ("IPA", "ipa", "ale"), ("小麦啤酒", "wheat", "ale")):
             styles[normalized], _ = BeerStyle.objects.get_or_create(
                 normalized_name=normalized,
                 defaults={"name": name, "category": categories[category]},

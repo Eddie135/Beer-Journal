@@ -13,11 +13,8 @@ from .models import (
     Brand,
     Brewery,
     FlavorTag,
-    RatingDimension,
     Tasting,
     TastingRatingValue,
-    TastingTag,
-    TastingTagLink,
 )
 
 
@@ -129,33 +126,14 @@ class CreateBeerTastingForm(forms.Form):
     price_amount = forms.DecimalField(label="价格", max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
     overall_score = forms.DecimalField(label="总评分（0–10，0.5 步进）", max_digits=3, decimal_places=1, required=False, min_value=Decimal("0"), max_value=Decimal("10"))
     notes = forms.CharField(label="品饮笔记", required=False, widget=forms.Textarea)
-    food_tags = forms.ModelMultipleChoiceField(label="食物搭配", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
-    occasion_tags = forms.ModelMultipleChoiceField(label="饮用场景", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
     photos = MultipleFileField(label="照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["category"].queryset = BeerCategory.objects.filter(is_active=True, deleted_at__isnull=True)
         self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category")
-        self.fields["food_tags"].queryset = TastingTag.objects.filter(category="food_pairing")
-        self.fields["occasion_tags"].queryset = TastingTag.objects.filter(category="occasion")
-        self.dimensions = list(RatingDimension.objects.filter(is_active=True).order_by("sort_order", "code"))
-        for dimension in self.dimensions:
-            self.fields[self._rating_field_name(dimension)] = forms.DecimalField(
-                label=f"{dimension.name}（{dimension.scale_min}–{dimension.scale_max}）",
-                max_digits=6,
-                decimal_places=3,
-                required=False,
-                min_value=dimension.scale_min,
-                max_value=dimension.scale_max,
-            )
         self.beer_fields = [self[name] for name in ("name", "brand_name", "brewery_name", "origin_country_code", "category", "style", "abv", "ibu", "plato", "mouthfeel_profile", "flavor_tag_input")]
-        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "food_tags", "occasion_tags", "photos")]
-        self.rating_fields = [self[self._rating_field_name(dimension)] for dimension in self.dimensions]
-
-    @staticmethod
-    def _rating_field_name(dimension):
-        return f"rating_{dimension.id}"
+        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "photos")]
 
     @staticmethod
     def _is_step(value, minimum, step):
@@ -196,11 +174,6 @@ class CreateBeerTastingForm(forms.Form):
             self.add_error("style", "请选择属于当前啤酒大类的类型。")
         if overall_score is not None and not self._is_step(overall_score, Decimal("0"), Decimal("0.5")):
             self.add_error("overall_score", "总评分必须以 0.5 为步进。")
-        for dimension in self.dimensions:
-            field_name = self._rating_field_name(dimension)
-            value = cleaned_data.get(field_name)
-            if value is not None and not self._is_step(value, dimension.scale_min, dimension.step):
-                self.add_error(field_name, f"评分必须以 {dimension.step} 为步进。")
         return cleaned_data
 
     @staticmethod
@@ -244,20 +217,6 @@ class CreateBeerTastingForm(forms.Form):
             notes=data["notes"],
             overall_score=data["overall_score"],
         )
-        for tag in list(data["food_tags"]) + list(data["occasion_tags"]):
-            TastingTagLink.objects.create(tasting=tasting, tag=tag)
-        for dimension in self.dimensions:
-            value = data.get(self._rating_field_name(dimension))
-            if value is not None:
-                TastingRatingValue.objects.create(
-                    tasting=tasting,
-                    dimension=dimension,
-                    value=value,
-                    dimension_name_snapshot=dimension.name,
-                    scale_min_snapshot=dimension.scale_min,
-                    scale_max_snapshot=dimension.scale_max,
-                    step_snapshot=dimension.step,
-                )
         return beer, tasting
 
 
@@ -327,47 +286,26 @@ class TastingEditForm(forms.Form):
     price_amount = forms.DecimalField(label="价格", max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
     overall_score = forms.DecimalField(label="总评分（0–10，0.5 步进）", max_digits=3, decimal_places=1, required=False, min_value=Decimal("0"), max_value=Decimal("10"))
     notes = forms.CharField(label="品饮笔记", required=False, widget=forms.Textarea)
-    food_tags = forms.ModelMultipleChoiceField(label="食物搭配", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
-    occasion_tags = forms.ModelMultipleChoiceField(label="饮用场景", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
     photos = MultipleFileField(label="新增照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
-    def __init__(self, *args, tasting=None, preserve_ratings=False, **kwargs):
+    def __init__(self, *args, tasting=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.tasting = tasting
-        self.preserve_ratings = preserve_ratings
-        self.fields["food_tags"].queryset = TastingTag.objects.filter(category="food_pairing")
-        self.fields["occasion_tags"].queryset = TastingTag.objects.filter(category="occasion")
-        self.dimensions = list(RatingDimension.objects.filter(is_active=True).order_by("sort_order", "code"))
-        existing = {rating.dimension_id: rating for rating in tasting.rating_values.all()} if tasting else {}
-        for dimension in self.dimensions:
-            field_name = CreateBeerTastingForm._rating_field_name(dimension)
-            self.fields[field_name] = forms.DecimalField(label=f"{dimension.name}（{dimension.scale_min}–{dimension.scale_max}）", max_digits=6, decimal_places=3, required=False, min_value=dimension.scale_min, max_value=dimension.scale_max)
-            if not self.is_bound and dimension.id in existing:
-                self.initial[field_name] = existing[dimension.id].value
         if not self.is_bound and tasting:
-            tags = list(tasting.tag_links.values_list("tag_id", "tag__category"))
             self.initial.update({
                 "tasted_at": timezone.localtime(tasting.tasted_at).strftime("%Y-%m-%dT%H:%M"),
                 "drinking_location": tasting.drinking_location,
                 "price_amount": tasting.price_amount,
                 "overall_score": tasting.overall_score,
                 "notes": tasting.notes,
-                "food_tags": [tag_id for tag_id, category in tags if category == "food_pairing"],
-                "occasion_tags": [tag_id for tag_id, category in tags if category == "occasion"],
             })
-        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "food_tags", "occasion_tags", "photos")]
-        self.rating_fields = [self[CreateBeerTastingForm._rating_field_name(dimension)] for dimension in self.dimensions]
+        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "photos")]
 
     def clean(self):
         cleaned_data = super().clean()
         score = cleaned_data.get("overall_score")
         if score is not None and not CreateBeerTastingForm._is_step(score, Decimal("0"), Decimal("0.5")):
             self.add_error("overall_score", "总评分必须以 0.5 为步进。")
-        for dimension in self.dimensions:
-            field_name = CreateBeerTastingForm._rating_field_name(dimension)
-            value = cleaned_data.get(field_name)
-            if value is not None and not CreateBeerTastingForm._is_step(value, dimension.scale_min, dimension.step):
-                self.add_error(field_name, f"评分必须以 {dimension.step} 为步进。")
         return cleaned_data
 
     def save(self, beer=None):
@@ -382,19 +320,4 @@ class TastingEditForm(forms.Form):
         self.tasting.overall_score = data["overall_score"]
         self.tasting.notes = data["notes"]
         self.tasting.save()
-        self.tasting.tag_links.all().delete()
-        for tag in list(data["food_tags"]) + list(data["occasion_tags"]):
-            TastingTagLink.objects.create(tasting=self.tasting, tag=tag)
-        if not self.preserve_ratings:
-            for dimension in self.dimensions:
-                field_name = CreateBeerTastingForm._rating_field_name(dimension)
-                value = data.get(field_name)
-                if value is None:
-                    self.tasting.rating_values.filter(dimension=dimension).delete()
-                else:
-                    TastingRatingValue.objects.update_or_create(
-                        tasting=self.tasting,
-                        dimension=dimension,
-                        defaults={"value": value, "dimension_name_snapshot": dimension.name, "scale_min_snapshot": dimension.scale_min, "scale_max_snapshot": dimension.scale_max, "step_snapshot": dimension.step},
-                    )
         return self.tasting

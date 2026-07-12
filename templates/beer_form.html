@@ -10,7 +10,7 @@
       {% for field in form.beer_fields %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>{% endfor %}
     </fieldset>
     <fieldset><legend>第一次品饮</legend>
-      {% for field in form.tasting_fields %}{% if field.name != "food_tags" and field.name != "occasion_tags" %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}
+      {% for field in form.tasting_fields %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
     </fieldset>
     <button class="button" type="submit">保存啤酒与首次品饮</button>
   </form>

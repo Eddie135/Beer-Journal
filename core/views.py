@@ -235,7 +235,7 @@ def beer_detail(request, beer_id):
     )
     tastings = list(
         beer.tastings.filter(deleted_at__isnull=True)
-        .prefetch_related("rating_values__dimension", "tag_links__tag", "photos")
+        .prefetch_related("photos")
         .order_by("-tasted_at", "-created_at")
     )
     beer.cover_photo = Photo.objects.filter(tasting__beer=beer, tasting__deleted_at__isnull=True).order_by("-tasting__tasted_at", "sort_order").first()
@@ -260,7 +260,7 @@ def create_tasting(request, beer_id):
 def tasting_detail(request, tasting_id):
     tasting = get_object_or_404(
         Tasting.objects.select_related("beer", "beer__style", "beer__brand", "beer__brewery")
-        .prefetch_related("rating_values__dimension", "tag_links__tag", "photos")
+        .prefetch_related("photos")
         .filter(deleted_at__isnull=True),
         id=tasting_id,
     )
@@ -288,8 +288,8 @@ def edit_beer(request, beer_id):
 
 
 def edit_tasting(request, tasting_id):
-    tasting = get_object_or_404(Tasting.objects.filter(deleted_at__isnull=True).prefetch_related("rating_values", "tag_links__tag", "photos"), id=tasting_id)
-    form = TastingEditForm(request.POST or None, request.FILES or None, tasting=tasting, preserve_ratings=True)
+    tasting = get_object_or_404(Tasting.objects.filter(deleted_at__isnull=True).prefetch_related("photos"), id=tasting_id)
+    form = TastingEditForm(request.POST or None, request.FILES or None, tasting=tasting)
     if request.method == "POST" and form.is_valid():
         try:
             with transaction.atomic():

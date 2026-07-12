@@ -30,20 +30,6 @@ class TastingPhotoInline(admin.TabularInline):
     fields = ("storage_key", "thumbnail_key", "mime_type", "byte_size", "width", "height", "sort_order", "checksum_sha256")
 
 
-class TastingRatingInline(admin.TabularInline):
-    model = TastingRatingValue
-    form = TastingRatingValueAdminForm
-    extra = 0
-    autocomplete_fields = ("dimension",)
-    fields = ("dimension", "value")
-
-
-class TastingTagInline(admin.TabularInline):
-    model = TastingTagLink
-    extra = 1
-    autocomplete_fields = ("tag",)
-
-
 @admin.register(BeerStyle)
 class BeerStyleAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active", "deleted_at")
@@ -95,7 +81,7 @@ class TastingAdmin(admin.ModelAdmin):
     list_select_related = ("beer",)
     autocomplete_fields = ("beer",)
     readonly_fields = ("id", "created_at", "updated_at")
-    inlines = (TastingPhotoInline, TastingRatingInline, TastingTagInline)
+    inlines = (TastingPhotoInline,)
     fieldsets = (
         ("品饮信息", {"fields": (("beer", "tasted_at"), ("drinking_location", "capacity", "bottle_count"), ("notes", "overall_score"))}),
         ("购买信息", {"fields": (("price_amount", "currency_code"), ("purchase_channel", "purchase_location"))}),
