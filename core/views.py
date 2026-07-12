@@ -1,9 +1,11 @@
 from decimal import Decimal, InvalidOperation
+from datetime import date
 from pathlib import Path
 
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Count, F, Max, Prefetch, Q
+from django.db.models.functions import TruncMonth
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -121,7 +123,91 @@ def start_tasting(request):
 
 
 def personal_data(request):
-    return render(request, "personal_data.html")
+    active_beers = Beer.objects.filter(deleted_at__isnull=True)
+    active_tastings = Tasting.objects.filter(deleted_at__isnull=True, beer__deleted_at__isnull=True)
+    core_stats = {
+        "beer_count": active_beers.count(),
+        "tasting_count": active_tastings.count(),
+        "average_score": active_tastings.aggregate(value=Avg("overall_score"))["value"],
+        "average_abv": active_beers.aggregate(value=Avg("abv"))["value"],
+        "average_plato": active_beers.aggregate(value=Avg("plato"))["value"],
+        "average_price": active_tastings.aggregate(value=Avg("price_amount"))["value"],
+    }
+    preferences = {
+        "category": (
+            active_tastings.exclude(beer__style__category__isnull=True)
+            .values("beer__style__category__name")
+            .annotate(count=Count("id"))
+            .order_by("-count", "beer__style__category__name")
+            .first()
+        ),
+        "style": (
+            active_tastings.exclude(beer__style__isnull=True)
+            .values("beer__style__name")
+            .annotate(count=Count("id"))
+            .order_by("-count", "beer__style__name")
+            .first()
+        ),
+        "country": (
+            active_tastings.exclude(beer__origin_country_code="")
+            .values("beer__origin_country_code")
+            .annotate(count=Count("id"))
+            .order_by("-count", "beer__origin_country_code")
+            .first()
+        ),
+        "flavor_tag": (
+            FlavorTag.objects.filter(
+                beer_links__beer__deleted_at__isnull=True,
+                beer_links__beer__tastings__deleted_at__isnull=True,
+            )
+            .values("name")
+            .annotate(count=Count("beer_links__beer__tastings", distinct=True))
+            .order_by("-count", "name")
+            .first()
+        ),
+    }
+
+    today = timezone.localdate()
+    month_starts = []
+    year, month = today.year, today.month
+    for _ in range(12):
+        month_starts.append(date(year, month, 1))
+        year, month = (year - 1, 12) if month == 1 else (year, month - 1)
+    month_starts.reverse()
+    first_month = month_starts[0]
+    tasting_by_month = {
+        item["month"].date(): item["count"]
+        for item in active_tastings.filter(tasted_at__date__gte=first_month)
+        .annotate(month=TruncMonth("tasted_at"))
+        .values("month")
+        .annotate(count=Count("id"))
+    }
+    beer_by_month = {
+        item["month"].date(): item["count"]
+        for item in active_beers.filter(created_at__date__gte=first_month)
+        .annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(count=Count("id"))
+    }
+    monthly_trends = [
+        {
+            "month": month_start,
+            "tasting_count": tasting_by_month.get(month_start, 0),
+            "beer_count": beer_by_month.get(month_start, 0),
+        }
+        for month_start in month_starts
+    ]
+    recent_tastings = (
+        active_tastings.select_related("beer", "beer__style", "beer__style__category")
+        .prefetch_related("photos")
+        .order_by("-tasted_at", "-created_at")[:5]
+    )
+    return render(request, "personal_data.html", {
+        "core_stats": core_stats,
+        "preferences": preferences,
+        "monthly_trends": monthly_trends,
+        "recent_tastings": recent_tastings,
+    })
 
 
 def create_beer_tasting(request):

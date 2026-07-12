@@ -1,6 +1,25 @@
 {% extends "base.html" %}
+{% load beer_extras %}
 {% block title %}个人数据 · BEER JOURNAL{% endblock %}
 {% block content %}
-  <section class="screen-heading"><p class="screen-kicker">YOUR COLLECTION</p><h1>个人数据</h1><p>收藏会慢慢形成你的啤酒偏好。</p></section>
-  <section class="empty-state app-card personal-placeholder"><span class="empty-icon">◌</span><h2>个人数据即将整理</h2><p>下一阶段会在这里呈现你的收藏轮廓和饮用习惯。</p></section>
+  <section class="screen-heading"><p class="screen-kicker">PERSONAL INSIGHTS</p><h1>个人数据</h1><p>从每一次饮用，看见自己的偏好。</p></section>
+
+  <section class="insight-hero app-card"><p>收藏与品饮</p><div class="insight-hero-numbers"><div><strong>{{ core_stats.beer_count }}</strong><span>款啤酒</span></div><div><strong>{{ core_stats.tasting_count }}</strong><span>次饮用</span></div><div><strong>{% if core_stats.average_score is not None %}{{ core_stats.average_score|floatformat:1 }}{% else %}—{% endif %}</strong><span>平均评分</span></div></div></section>
+
+  <section class="insight-section"><div class="section-heading"><h2>口味偏好</h2><span>基于有效饮用</span></div><div class="insight-grid">
+    <article class="insight-card app-card"><span>最常饮用大类</span><strong>{{ preferences.category.beer__style__category__name|default:"暂无" }}</strong>{% if preferences.category %}<small>{{ preferences.category.count }} 次</small>{% endif %}</article>
+    <article class="insight-card app-card"><span>最常饮用风格</span><strong>{{ preferences.style.beer__style__name|default:"暂无" }}</strong>{% if preferences.style %}<small>{{ preferences.style.count }} 次</small>{% endif %}</article>
+    <article class="insight-card app-card"><span>最常饮用国家</span><strong>{% if preferences.country %}{{ preferences.country.beer__origin_country_code|flag }} {{ preferences.country.beer__origin_country_code|country_name }}{% else %}暂无{% endif %}</strong>{% if preferences.country %}<small>{{ preferences.country.count }} 次</small>{% endif %}</article>
+    <article class="insight-card app-card"><span>最常出现风味</span><strong>{{ preferences.flavor_tag.name|default:"暂无" }}</strong>{% if preferences.flavor_tag %}<small>{{ preferences.flavor_tag.count }} 次</small>{% endif %}</article>
+  </div></section>
+
+  <section class="insight-section"><div class="section-heading"><h2>平均数据</h2><span>已填写项目</span></div><div class="average-grid">
+    <article class="average-card app-card"><span>平均 ABV</span><strong>{% if core_stats.average_abv is not None %}{{ core_stats.average_abv|floatformat:1 }}%{% else %}—{% endif %}</strong></article>
+    <article class="average-card app-card"><span>平均 Plato</span><strong>{% if core_stats.average_plato is not None %}{{ core_stats.average_plato|floatformat:1 }}°P{% else %}—{% endif %}</strong></article>
+    <article class="average-card app-card"><span>平均价格</span><strong>{% if core_stats.average_price is not None %}¥{{ core_stats.average_price|floatformat:1 }}{% else %}—{% endif %}</strong></article>
+  </div></section>
+
+  <section class="insight-section"><div class="section-heading"><h2>近 12 个月</h2><span>饮用 / 新增啤酒</span></div><div class="trend-list app-card">{% for trend in monthly_trends %}<div class="trend-row"><span>{{ trend.month|date:"Y年n月" }}</span><div class="trend-bars"><i style="--value: {{ trend.tasting_count }}"></i><b style="--value: {{ trend.beer_count }}"></b></div><small>{{ trend.tasting_count }} 次 / {{ trend.beer_count }} 款</small></div>{% endfor %}</div></section>
+
+  <section class="insight-section"><div class="section-heading"><h2>最近饮用</h2><a href="{% url 'tasting-list' %}">查看全部</a></div><div class="recent-list">{% for tasting in recent_tastings %}<a class="recent-tasting app-card" href="{% url 'tasting-detail' tasting.id %}"><div><strong>{{ tasting.beer.name }}</strong><span>{{ tasting.tasted_at|date:"Y年n月j日" }} · {{ tasting.beer.origin_country_code|flag }} {{ tasting.beer.origin_country_code|country_name }}</span></div><b>{% if tasting.overall_score is not None %}{{ tasting.overall_score }}{% else %}—{% endif %}</b></a>{% empty %}<div class="empty-state app-card"><p>还没有饮用记录。</p></div>{% endfor %}</div></section>
 {% endblock %}
