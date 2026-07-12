@@ -5,7 +5,7 @@
   <section class="beer-grid">
     {% for beer in beers %}
       <article class="beer-card">
-        <div class="image-placeholder" aria-label="暂无图片">暂无图片</div>
+        {% if beer.cover_photo %}<img class="card-image" src="{% url 'photo-file' beer.cover_photo.id 'thumbnail' %}" alt="{{ beer.name }} 照片">{% else %}<div class="image-placeholder" aria-label="暂无图片">暂无图片</div>{% endif %}
         <div class="card-body">
           <p class="muted">{{ beer.origin_country_code|default:"未填写国家" }}</p>
           <h2><a href="{% url 'beer-detail' beer.id %}">{{ beer.name }}</a></h2>

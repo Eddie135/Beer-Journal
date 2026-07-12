@@ -1,8 +1,14 @@
 from datetime import datetime
 from decimal import Decimal
+from io import BytesIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
-from django.test import SimpleTestCase, TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import SimpleTestCase, TestCase, TransactionTestCase
+from django.test.utils import override_settings
 from django.utils import timezone
+from PIL import Image
 
 from .models import (
     Beer,
@@ -182,7 +188,7 @@ class AdminWorkflowTests(TestCase):
         self.assertEqual(rating.scale_max_snapshot, Decimal("10.000"))
 
 
-class PublicWorkflowTests(TestCase):
+class PublicWorkflowTests(TransactionTestCase):
     def setUp(self):
         self.style = BeerStyle.objects.create(name="IPA", normalized_name="public-ipa")
         self.flavor = FlavorTag.objects.create(name="柑橘", normalized_name="public-柑橘", category="水果")
@@ -247,3 +253,67 @@ class PublicWorkflowTests(TestCase):
         tasting_response = self.client.get(f"/tastings/{tasting.id}/")
         self.assertEqual(tasting_response.status_code, 200)
         self.assertContains(tasting_response, "烧烤")
+
+    def _image_upload(self, name="label.png"):
+        image_bytes = BytesIO()
+        Image.new("RGB", (1200, 800), color=(30, 120, 60)).save(image_bytes, format="PNG")
+        return SimpleUploadedFile(name, image_bytes.getvalue(), content_type="image/png")
+
+    def test_photo_upload_is_reencoded_and_served_through_application(self):
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            payload = self._valid_payload()
+            payload["photos"] = [self._image_upload()]
+            response = self.client.post("/beers/add/", payload)
+            self.assertEqual(response.status_code, 302)
+            tasting = Tasting.objects.get(beer__name="用户流程 IPA")
+            photo = tasting.photos.get()
+            self.assertTrue(photo.storage_key.endswith(".webp"))
+            self.assertTrue((Path(media_root) / photo.storage_key).is_file())
+            self.assertTrue((Path(media_root) / photo.thumbnail_key).is_file())
+            self.assertLessEqual(photo.width, 2000)
+            self.assertLessEqual(photo.height, 2000)
+            image_response = self.client.get(f"/photos/{photo.id}/thumbnail/")
+            self.assertEqual(image_response.status_code, 200)
+            self.assertEqual(image_response["Content-Type"], "image/webp")
+            self.client.post(f"/photos/{photo.id}/delete/")
+            self.assertFalse((Path(media_root) / photo.storage_key).exists())
+            self.assertFalse((Path(media_root) / photo.thumbnail_key).exists())
+
+    def test_invalid_image_upload_does_not_create_partial_records(self):
+        with TemporaryDirectory() as media_root, override_settings(MEDIA_ROOT=media_root):
+            payload = self._valid_payload()
+            payload["photos"] = [SimpleUploadedFile("not-an-image.jpg", b"not an image", content_type="image/jpeg")]
+            response = self.client.post("/beers/add/", payload)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "文件不是可识别的图片")
+            self.assertFalse(Beer.objects.filter(name="用户流程 IPA").exists())
+
+    def test_edit_and_soft_delete_restore_records(self):
+        beer = Beer.objects.create(name="待编辑啤酒", style=self.style, origin_country_code="CN")
+        tasting = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)), overall_score=Decimal("7.0"))
+        beer_response = self.client.post(
+            f"/beers/{beer.id}/edit/",
+            {"name": "已编辑啤酒", "brand_name": "", "brewery_name": "", "origin_country_code": "CN", "style": str(self.style.id), "abv": "5.00", "ibu": "20.00", "flavor_tags": [str(self.flavor.id)]},
+        )
+        self.assertEqual(beer_response.status_code, 302)
+        beer.refresh_from_db()
+        self.assertEqual(beer.name, "已编辑啤酒")
+        tasting_response = self.client.post(
+            f"/tastings/{tasting.id}/edit/",
+            {"tasted_at": "2026-07-16T20:30", "drinking_location": "酒吧", "price_amount": "30.00", "overall_score": "8.0", "notes": "已编辑", "food_tags": [str(self.food.id)], "occasion_tags": [str(self.occasion.id)], f"rating_{self.dimension.id}": "8.0"},
+        )
+        self.assertEqual(tasting_response.status_code, 302)
+        tasting.refresh_from_db()
+        self.assertEqual(tasting.overall_score, Decimal("8.0"))
+        self.client.post(f"/tastings/{tasting.id}/delete/")
+        tasting.refresh_from_db()
+        self.assertIsNotNone(tasting.deleted_at)
+        self.client.post(f"/tastings/{tasting.id}/restore/")
+        tasting.refresh_from_db()
+        self.assertIsNone(tasting.deleted_at)
+        self.client.post(f"/beers/{beer.id}/delete/")
+        beer.refresh_from_db()
+        self.assertIsNotNone(beer.deleted_at)
+        self.client.post(f"/beers/{beer.id}/restore/")
+        beer.refresh_from_db()
+        self.assertIsNone(beer.deleted_at)

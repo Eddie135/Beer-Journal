@@ -37,6 +37,20 @@ class TastingRatingValueAdminForm(forms.ModelForm):
         return instance
 
 
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    widget = MultipleFileInput
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if not data:
+            return []
+        return [single_file_clean(item, initial) for item in data]
+
+
 class CreateBeerTastingForm(forms.Form):
     name = forms.CharField(label="啤酒名称", max_length=200)
     brand_name = forms.CharField(label="品牌", max_length=200, required=False)
@@ -53,6 +67,7 @@ class CreateBeerTastingForm(forms.Form):
     notes = forms.CharField(label="品饮笔记", required=False, widget=forms.Textarea)
     food_tags = forms.ModelMultipleChoiceField(label="食物搭配", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
     occasion_tags = forms.ModelMultipleChoiceField(label="饮用场景", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
+    photos = MultipleFileField(label="照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -71,7 +86,7 @@ class CreateBeerTastingForm(forms.Form):
                 max_value=dimension.scale_max,
             )
         self.beer_fields = [self[name] for name in ("name", "brand_name", "brewery_name", "origin_country_code", "style", "abv", "ibu", "flavor_tags")]
-        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "food_tags", "occasion_tags")]
+        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "food_tags", "occasion_tags", "photos")]
         self.rating_fields = [self[self._rating_field_name(dimension)] for dimension in self.dimensions]
 
     @staticmethod
@@ -160,3 +175,125 @@ class CreateBeerTastingForm(forms.Form):
                     step_snapshot=dimension.step,
                 )
         return beer, tasting
+
+
+class BeerEditForm(forms.Form):
+    name = forms.CharField(label="啤酒名称", max_length=200)
+    brand_name = forms.CharField(label="品牌", max_length=200, required=False)
+    brewery_name = forms.CharField(label="酒厂", max_length=200, required=False)
+    origin_country_code = forms.CharField(label="国家代码", max_length=2)
+    style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none())
+    abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
+    ibu = forms.DecimalField(label="IBU 苦度", max_digits=6, decimal_places=2, required=False, min_value=Decimal("0"))
+    flavor_tags = forms.ModelMultipleChoiceField(label="风味标签", queryset=FlavorTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
+
+    def __init__(self, *args, beer, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.beer = beer
+        self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True)
+        self.fields["flavor_tags"].queryset = FlavorTag.objects.all()
+        if not self.is_bound:
+            self.initial.update({
+                "name": beer.name,
+                "brand_name": beer.brand.name if beer.brand else "",
+                "brewery_name": beer.brewery.name if beer.brewery else "",
+                "origin_country_code": beer.origin_country_code,
+                "style": beer.style,
+                "abv": beer.abv,
+                "ibu": beer.ibu,
+                "flavor_tags": [link.tag_id for link in beer.flavor_tag_links.all()],
+            })
+
+    def clean_origin_country_code(self):
+        country_code = self.cleaned_data["origin_country_code"].strip().upper()
+        if len(country_code) != 2 or not country_code.isalpha():
+            raise forms.ValidationError("请填写两位大写国家代码，例如 CN、DE、US。")
+        return country_code
+
+    def save(self):
+        data = self.cleaned_data
+        self.beer.name = data["name"].strip()
+        self.beer.origin_country_code = data["origin_country_code"]
+        self.beer.style = data["style"]
+        self.beer.abv = data["abv"]
+        self.beer.ibu = data["ibu"]
+        self.beer.brand = CreateBeerTastingForm._get_or_create_source(Brand, data["brand_name"], data["origin_country_code"])
+        self.beer.brewery = CreateBeerTastingForm._get_or_create_source(Brewery, data["brewery_name"], data["origin_country_code"])
+        self.beer.save()
+        self.beer.flavor_tag_links.all().delete()
+        for tag in data["flavor_tags"]:
+            BeerFlavorTag.objects.create(beer=self.beer, tag=tag)
+        return self.beer
+
+
+class TastingEditForm(forms.Form):
+    tasted_at = forms.DateTimeField(label="品饮时间", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"])
+    drinking_location = forms.CharField(label="饮用地点", max_length=255, required=False)
+    price_amount = forms.DecimalField(label="价格", max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
+    overall_score = forms.DecimalField(label="总评分（0–10，0.5 步进）", max_digits=3, decimal_places=1, required=False, min_value=Decimal("0"), max_value=Decimal("10"))
+    notes = forms.CharField(label="品饮笔记", required=False, widget=forms.Textarea)
+    food_tags = forms.ModelMultipleChoiceField(label="食物搭配", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
+    occasion_tags = forms.ModelMultipleChoiceField(label="饮用场景", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
+    photos = MultipleFileField(label="新增照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
+
+    def __init__(self, *args, tasting, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tasting = tasting
+        self.fields["food_tags"].queryset = TastingTag.objects.filter(category="food_pairing")
+        self.fields["occasion_tags"].queryset = TastingTag.objects.filter(category="occasion")
+        self.dimensions = list(RatingDimension.objects.filter(is_active=True).order_by("sort_order", "code"))
+        existing = {rating.dimension_id: rating for rating in tasting.rating_values.all()}
+        for dimension in self.dimensions:
+            field_name = CreateBeerTastingForm._rating_field_name(dimension)
+            self.fields[field_name] = forms.DecimalField(label=f"{dimension.name}（{dimension.scale_min}–{dimension.scale_max}）", max_digits=6, decimal_places=3, required=False, min_value=dimension.scale_min, max_value=dimension.scale_max)
+            if not self.is_bound and dimension.id in existing:
+                self.initial[field_name] = existing[dimension.id].value
+        if not self.is_bound:
+            tags = list(tasting.tag_links.values_list("tag_id", "tag__category"))
+            self.initial.update({
+                "tasted_at": timezone.localtime(tasting.tasted_at).strftime("%Y-%m-%dT%H:%M"),
+                "drinking_location": tasting.drinking_location,
+                "price_amount": tasting.price_amount,
+                "overall_score": tasting.overall_score,
+                "notes": tasting.notes,
+                "food_tags": [tag_id for tag_id, category in tags if category == "food_pairing"],
+                "occasion_tags": [tag_id for tag_id, category in tags if category == "occasion"],
+            })
+        self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "food_tags", "occasion_tags", "photos")]
+        self.rating_fields = [self[CreateBeerTastingForm._rating_field_name(dimension)] for dimension in self.dimensions]
+
+    def clean(self):
+        cleaned_data = super().clean()
+        score = cleaned_data.get("overall_score")
+        if score is not None and not CreateBeerTastingForm._is_step(score, Decimal("0"), Decimal("0.5")):
+            self.add_error("overall_score", "总评分必须以 0.5 为步进。")
+        for dimension in self.dimensions:
+            field_name = CreateBeerTastingForm._rating_field_name(dimension)
+            value = cleaned_data.get(field_name)
+            if value is not None and not CreateBeerTastingForm._is_step(value, dimension.scale_min, dimension.step):
+                self.add_error(field_name, f"评分必须以 {dimension.step} 为步进。")
+        return cleaned_data
+
+    def save(self):
+        data = self.cleaned_data
+        self.tasting.tasted_at = data["tasted_at"]
+        self.tasting.drinking_location = data["drinking_location"]
+        self.tasting.price_amount = data["price_amount"]
+        self.tasting.overall_score = data["overall_score"]
+        self.tasting.notes = data["notes"]
+        self.tasting.save()
+        self.tasting.tag_links.all().delete()
+        for tag in list(data["food_tags"]) + list(data["occasion_tags"]):
+            TastingTagLink.objects.create(tasting=self.tasting, tag=tag)
+        for dimension in self.dimensions:
+            field_name = CreateBeerTastingForm._rating_field_name(dimension)
+            value = data.get(field_name)
+            if value is None:
+                self.tasting.rating_values.filter(dimension=dimension).delete()
+            else:
+                TastingRatingValue.objects.update_or_create(
+                    tasting=self.tasting,
+                    dimension=dimension,
+                    defaults={"value": value, "dimension_name_snapshot": dimension.name, "scale_min_snapshot": dimension.scale_min, "scale_max_snapshot": dimension.scale_max, "step_snapshot": dimension.step},
+                )
+        return self.tasting

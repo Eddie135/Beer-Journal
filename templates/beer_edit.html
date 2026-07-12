@@ -1,0 +1,3 @@
+{% extends "base.html" %}
+{% block title %}编辑 {{ beer.name }} · BEER JOURNAL{% endblock %}
+{% block content %}<div class="page-heading"><div><p class="eyebrow">啤酒资料</p><h1>编辑 {{ beer.name }}</h1></div></div><form method="post" class="record-form">{% csrf_token %}{% for field in form %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}<button class="button" type="submit">保存修改</button></form>{% endblock %}
