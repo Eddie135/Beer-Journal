@@ -1,6 +1,6 @@
 # BEER JOURNAL 数据库设计
 
-文档状态：第一版逻辑设计，待用户确认 Beer/Tasting 边界
+文档状态：v2.0 逻辑设计已确认，待迁移实现
 更新日期：2026-07-12
 目标数据库：PostgreSQL 17
 
@@ -18,7 +18,7 @@
 ## 2. 核心关系
 
 ```text
-BeerStyle 1 ─── N Beer
+BeerCategory 1 ─── N BeerStyle 1 ─── N Beer
 
 Brewery 1 ─── N Beer
 Brand 1 ─── N Beer
@@ -38,11 +38,11 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 
 | 信息 | 表 | 原因 |
 |---|---|---|
-| 名称、品牌、酒厂、国家、产区、类型、ABV、IBU、颜色、酒花、麦芽、风味标签 | `beers` 及其关系表 | 代表这款啤酒的长期资料，多次饮用时复用 |
-| 饮用时间、地点、容量、价格、购买渠道和地点 | `tastings` | 每次饮用可能不同 |
-| 品饮感想、总分、多维评分 | `tastings` 及评分关系表 | 每次体验可能不同 |
+| 名称、品牌、酒厂、国家、产区、两级类型、ABV、IBU、颜色、Plato、口感档案、酒花、麦芽、风味标签 | `beers` 及其关系表 | 代表这款啤酒的长期资料，多次饮用时复用 |
+| 饮用时间、地点、容量、饮用瓶数、价格、购买渠道和地点 | `tastings` | 每次饮用可能不同 |
+| 品饮感想、总体评分、多维评分 | `tastings` 及评分关系表 | 每次体验可能不同；v2.0 新 UI 只录入总体评分 |
 | 照片 | `photos`，关联 `tastings` | 每次喝酒可能拍不同照片 |
-| 食物搭配、饮用场景 | `tasting_tags`，通过关系表关联 Tasting | 属于当次体验，不能写入 Beer |
+| 食物搭配、饮用场景 | `tasting_tags`，通过关系表关联 Tasting | 保留历史兼容；v2.0 新 UI 不再录入 |
 
 品牌和酒厂不是简单的自由标签：它们是可复用、可合并、可筛选的来源实体，建议使用独立的 `brands`、`breweries` 表，由 Beer 通过外键关联。国家使用标准代码，地区保留可搜索的文本；不要把国家、地区、品牌或酒厂塞进通用标签。
 
@@ -54,7 +54,7 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 
 - 主键统一使用应用生成的 UUID，便于导出、恢复和未来数据合并。
 - `created_at`、`updated_at` 使用带时区时间，数据库保存 UTC，界面显示 Asia/Shanghai。
-- 实际饮用日期使用 `DATE`，避免时区换算导致日期变化。
+- 实际饮用时间使用 `TIMESTAMPTZ`，数据库保存 UTC、界面按 Asia/Shanghai 显示；按日统计时先转换到用户时区。
 - 未知或未填写使用 `NULL`；不得用空字符串、0 或“未知”假装有效值。
 - 金额和评分使用 `NUMERIC`/十进制，禁止浮点数。
 - 文本统一 UTF-8；用户笔记保存纯文本或受控 Markdown，不保存未经清理的 HTML。
@@ -64,9 +64,17 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 
 ## 4. 数据表
 
-### 4.1 `beer_styles`：啤酒类型
+### 4.1 `beer_categories` 与 `beer_styles`：两级啤酒分类
 
-用于规范 IPA、Lager、Stout 等类型，同时允许用户以后补充自定义类型。
+分类采用固定两级，而不是让 Beer 直接挂在一个混合的类型列表中：`BeerCategory` 保存大类，`BeerStyle` 保存具体风格。Beer 仍只关联具体 `BeerStyle`，因此现有 Beer 的外键含义保持稳定。
+
+`beer_categories` 字段：`id`、`name`、`normalized_name`（唯一）、`code`（唯一，如 `lager`、`ale`）、`sort_order`、`is_active`、时间戳。首批数据为 Lager、Ale；以后新增大类必须通过迁移/管理流程明确决定。
+
+`beer_styles` 在原有字段基础上增加：
+
+| 字段 | 类型 | 规则 | 说明 |
+|---|---|---|---|
+| `category_id` | UUID | 必填、外键、限制删除 | 所属 BeerCategory |
 
 | 字段 | 类型 | 规则 | 说明 |
 |---|---|---|---|
@@ -83,7 +91,7 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 
 - `name` 去除首尾空格后不能为空。
 - 已被啤酒使用的类型不能直接删除，只能停用。
-- 第一版不建立父子类型层级，避免无实际需求的复杂度。
+- v2.0 明确采用两级结构：Lager 下至少包含皮尔森、淡色拉格、黑拉格；Ale 下至少包含 IPA、小麦啤酒、世涛。中文显示名称可调整，但稳定 `code` 不能随意改写。
 
 ### 4.2 `beers`：啤酒基本资料
 
@@ -101,6 +109,8 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 | `abv` | NUMERIC(5,2) | 可空 | 酒精度百分比，例如 6.50 |
 | `ibu` | NUMERIC(6,2) | 可空 | 苦度 IBU；未知为 NULL |
 | `color_ebc` | NUMERIC(6,2) | 可空 | 颜色的 EBC 数值；展示层可换算 SRM |
+| `plato` | NUMERIC(5,2) | 可空 | 麦汁浓度（°P）；未知为 NULL |
+| `mouthfeel_profile` | VARCHAR(20) | 可空、受限枚举 | 清爽、适中、醇厚；描述该款 Beer 的典型口感，不替代某次品饮笔记 |
 | `catalog_notes` | TEXT | 可空 | 与某次品饮无关的基本说明 |
 | `created_at` | TIMESTAMPTZ | 必填 | 创建时间 |
 | `updated_at` | TIMESTAMPTZ | 必填 | 更新时间 |
@@ -112,7 +122,8 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 - `abv` 为空或位于 0.00–100.00。
 - 国家代码为空或为两个大写英文字母。
 - `style_id`、`brand_id`、`brewery_id` 使用限制删除；被引用的实体不能静默删除。
-- `abv` 为空或位于 0.00–100.00；`ibu` 为空或大于等于 0；`color_ebc` 为空或大于等于 0。
+- `abv` 为空或位于 0.00–100.00；`ibu`、`color_ebc`、`plato` 为空或大于等于 0。
+- `mouthfeel_profile` 只能为 `crisp`、`balanced`、`full` 三个稳定内部值，界面分别显示清爽、适中、醇厚。
 - 不对“名称 + 品牌 + 酒厂”设置强唯一约束。年份、批次和同名酒可能合法存在，应用只做疑似重复提示。
 - 容量和价格不得放进本表，因为同一款酒可能以不同包装和价格饮用。
 
@@ -137,6 +148,7 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 | `tasted_at` | TIMESTAMPTZ | 必填 | 实际饮用日期和时间；界面可只填写日期并补当天默认时间 |
 | `drinking_location` | VARCHAR(255) | 可空 | 饮用地点 |
 | `volume_ml` | INTEGER | 可空 | 本次容量，单位毫升 |
+| `bottle_count` | NUMERIC(5,2) | 可空 | 本次实际饮用的瓶/罐数量；允许半瓶等非整数 |
 | `price_amount` | NUMERIC(12,2) | 可空 | 本次价格 |
 | `currency_code` | CHAR(3) | 默认 CNY | ISO 4217 货币代码 |
 | `purchase_channel` | VARCHAR(100) | 可空 | 超市、酒吧、网购、朋友赠送等 |
@@ -150,7 +162,7 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 约束：
 
 - `beer_id` 使用限制删除，不能删除 Beer 时静默级联清除全部品饮历史。
-- `volume_ml` 为空或大于 0。
+- `volume_ml` 为空或大于 0；`bottle_count` 为空或大于 0。
 - `price_amount` 为空或大于等于 0。
 - `currency_code` 为三个大写英文字母；有价格时必须有货币代码。
 - `overall_score` 为空或位于 0.0–10.0；0.5 步进由表单与模型校验，数据库同时保留范围约束。
@@ -159,7 +171,7 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 
 价格筛选必须限定同一货币。第一版默认使用人民币 CNY，不进行汇率换算。
 
-食物搭配和饮用场景不做固定列。它们属于一次 Tasting，可通过 `tasting_tags` 和关系表记录“烧烤”“海鲜”“独饮”“聚会”等多个值；若需要补充细节，使用 `notes`，不把第一个场景误当成唯一场景。
+食物搭配和饮用场景不做固定列。它们属于一次 Tasting，可通过 `tasting_tags` 和关系表记录“烧烤”“海鲜”“独饮”“聚会”等多个值；v2.0 只保留历史读取与导出兼容，不再在新建、编辑或再次品饮 UI 中写入。若需要补充细节，使用 `notes`。
 
 ### 4.3.1 `tasting_tags` 与 `tasting_tag_links`：品饮级标签
 
@@ -201,7 +213,9 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 | `category` | VARCHAR(40) | 必填 | 水果、香料、烘烤、树脂等风味类别 |
 | `created_at` | TIMESTAMPTZ | 必填 | 创建时间 |
 
-`normalized_name` 由去首尾空格并统一大小写得到。风味标签只描述嗅味/味觉印象，不用来代替啤酒类型、原料、国家或酒厂。删除一个未使用标签不会删除任何啤酒。
+`normalized_name` 由 Unicode NFKC 规范化、去首尾空格、合并连续空白并进行大小写折叠得到。用户可在 Beer 表单直接输入一个或多个自定义风味标签；保存时先按 `normalized_name` 查找，存在即复用，不存在才新建。风味标签只描述嗅味/味觉印象，不用来代替啤酒类型、原料、国家或酒厂。删除一个未使用标签不会删除任何啤酒。
+
+标签去重的数据库最终约束仍是 `normalized_name` 唯一；前端仅提供即时提示，不能替代数据库约束。历史标签名称保持原样显示，后续如需合并同义标签，必须提供可审计的迁移工具。
 
 ### 4.6 `beer_flavor_tags`：啤酒与风味标签关系
 
@@ -286,6 +300,18 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 6. 永久删除必须二次确认，测试必须覆盖成功、失败和文件清理路径。
 
 这一策略比直接硬删除更安全，适合无法通过读代码判断影响的个人用户。
+
+v2.0 不在主要 App 导航展示回收站，也不删除 `deleted_at` 或恢复能力。软删除数据继续排除在默认列表、饮用记录和个人数据统计之外；恢复入口属于低优先级维护/设置页面。
+
+## 5.1 v2.0 UI 隐藏字段与历史兼容
+
+以下关系和字段不会在 v2.0 日常录入 UI 出现，但不得删除、清空或更改历史含义：
+
+- `RatingDimension`、`TastingRatingValue` 与评分维度快照；新记录默认只填写 `overall_score`。
+- `TastingTag`、`TastingTagLink` 中类别为 `food_pairing`、`occasion` 的历史记录。
+- `deleted_at` 与已删除 Beer/Tasting 的恢复状态。
+
+JSON/CSV 导出、备份与恢复仍必须包含上述历史数据。任何未来“永久移除复杂评分或品饮标签”的提议，都需要单独的数据迁移、影响报告和用户二次确认。
 
 ## 6. 索引
 
