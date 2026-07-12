@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load beer_extras %}
+{% block title %}饮用记录 · BEER JOURNAL{% endblock %}
+{% block content %}
+  <section class="screen-heading"><p class="screen-kicker">TASTING LOG</p><h1>饮用记录</h1><p>每一次打开，都是一段独立的味觉记忆。</p></section>
+  <section class="timeline-list">
+    {% for tasting in tastings %}
+      <a class="tasting-card app-card" href="{% url 'tasting-detail' tasting.id %}">
+        {% with photo=tasting.photos.first %}{% if photo %}<img class="tasting-card-image progressive-image" src="{% url 'photo-file' photo.id 'thumbnail' %}" alt="{{ tasting.beer.name }} 照片">{% else %}<div class="image-placeholder compact">暂无图片</div>{% endif %}{% endwith %}
+        <div class="tasting-card-body"><p class="meta-line">{{ tasting.tasted_at|date:"Y年n月j日" }} · {{ tasting.beer.origin_country_code|flag }} {{ tasting.beer.origin_country_code|country_name }}</p><h2>{{ tasting.beer.name }}</h2><p>{{ tasting.beer.style|default:"未填写类型" }} · {{ tasting.drinking_location|default:"未填写地点" }}</p><span class="score-badge">{% if tasting.overall_score is not None %}{{ tasting.overall_score }}{% else %}未评分{% endif %}</span></div>
+      </a>
+    {% empty %}
+      <section class="empty-state app-card"><span class="empty-icon">◌</span><h2>还没有饮用记录</h2><p>从第一瓶啤酒开始，慢慢收集属于你的味觉轨迹。</p><a class="button" href="{% url 'beer-add' %}">添加啤酒</a></section>
+    {% endfor %}
+  </section>
+{% endblock %}

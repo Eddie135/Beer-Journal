@@ -4,8 +4,10 @@ from django import forms
 from django.db import transaction
 from django.utils import timezone
 
+from .countries import COUNTRIES
 from .models import (
     Beer,
+    BeerCategory,
     BeerFlavorTag,
     BeerStyle,
     Brand,
@@ -17,6 +19,14 @@ from .models import (
     TastingTag,
     TastingTagLink,
 )
+
+
+class StyleSelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if hasattr(value, "instance"):
+            option["attrs"]["data-category-id"] = str(value.instance.category_id)
+        return option
 
 
 class TastingRatingValueAdminForm(forms.ModelForm):
@@ -55,11 +65,14 @@ class CreateBeerTastingForm(forms.Form):
     name = forms.CharField(label="啤酒名称", max_length=200)
     brand_name = forms.CharField(label="品牌", max_length=200, required=False)
     brewery_name = forms.CharField(label="酒厂", max_length=200, required=False)
-    origin_country_code = forms.CharField(label="国家代码", max_length=2, help_text="使用两位大写代码，例如 CN、DE、US。")
-    style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none())
+    origin_country_code = forms.ChoiceField(label="国家", choices=COUNTRIES)
+    category = forms.ModelChoiceField(label="啤酒大类", queryset=BeerCategory.objects.none(), widget=forms.Select(attrs={"data-category-select": ""}))
+    style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none(), widget=StyleSelect(attrs={"data-style-select": ""}))
     abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
     ibu = forms.DecimalField(label="IBU 苦度", max_digits=6, decimal_places=2, required=False, min_value=Decimal("0"))
-    flavor_tags = forms.ModelMultipleChoiceField(label="风味标签", queryset=FlavorTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
+    plato = forms.DecimalField(label="麦汁浓度 Plato（°P）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"))
+    mouthfeel_profile = forms.ChoiceField(label="口感", required=False, choices=(("", "未填写"),) + Beer.MOUTHFEEL_CHOICES)
+    flavor_tag_input = forms.CharField(label="风味标签", required=False, help_text="用逗号或顿号分隔，例如：柑橘、松脂、焦糖。")
     tasted_at = forms.DateTimeField(label="品饮时间", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"], initial=timezone.localtime)
     drinking_location = forms.CharField(label="饮用地点", max_length=255, required=False)
     price_amount = forms.DecimalField(label="价格", max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
@@ -71,8 +84,8 @@ class CreateBeerTastingForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True)
-        self.fields["flavor_tags"].queryset = FlavorTag.objects.all()
+        self.fields["category"].queryset = BeerCategory.objects.filter(is_active=True, deleted_at__isnull=True)
+        self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category")
         self.fields["food_tags"].queryset = TastingTag.objects.filter(category="food_pairing")
         self.fields["occasion_tags"].queryset = TastingTag.objects.filter(category="occasion")
         self.dimensions = list(RatingDimension.objects.filter(is_active=True).order_by("sort_order", "code"))
@@ -85,7 +98,7 @@ class CreateBeerTastingForm(forms.Form):
                 min_value=dimension.scale_min,
                 max_value=dimension.scale_max,
             )
-        self.beer_fields = [self[name] for name in ("name", "brand_name", "brewery_name", "origin_country_code", "style", "abv", "ibu", "flavor_tags")]
+        self.beer_fields = [self[name] for name in ("name", "brand_name", "brewery_name", "origin_country_code", "category", "style", "abv", "ibu", "plato", "mouthfeel_profile", "flavor_tag_input")]
         self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "food_tags", "occasion_tags", "photos")]
         self.rating_fields = [self[self._rating_field_name(dimension)] for dimension in self.dimensions]
 
@@ -103,15 +116,33 @@ class CreateBeerTastingForm(forms.Form):
             raise forms.ValidationError("请填写啤酒名称。")
         return name
 
-    def clean_origin_country_code(self):
-        country_code = self.cleaned_data["origin_country_code"].strip().upper()
-        if len(country_code) != 2 or not country_code.isalpha():
-            raise forms.ValidationError("请填写两位大写国家代码，例如 CN、DE、US。")
-        return country_code
+    @staticmethod
+    def _tag_names(value):
+        return [item.strip() for item in value.replace("，", ",").replace("、", ",").split(",") if item.strip()]
+
+    @classmethod
+    def _get_or_create_flavor_tags(cls, value):
+        tags = []
+        seen_normalized_names = set()
+        for name in cls._tag_names(value):
+            normalized_name = FlavorTag.normalize_name(name)
+            if not normalized_name or normalized_name in seen_normalized_names:
+                continue
+            seen_normalized_names.add(normalized_name)
+            tag, _ = FlavorTag.objects.get_or_create(
+                normalized_name=normalized_name,
+                defaults={"name": name, "category": "自定义"},
+            )
+            tags.append(tag)
+        return tags
 
     def clean(self):
         cleaned_data = super().clean()
         overall_score = cleaned_data.get("overall_score")
+        style = cleaned_data.get("style")
+        category = cleaned_data.get("category")
+        if style and category and style.category_id != category.id:
+            self.add_error("style", "请选择属于当前啤酒大类的类型。")
         if overall_score is not None and not self._is_step(overall_score, Decimal("0"), Decimal("0.5")):
             self.add_error("overall_score", "总评分必须以 0.5 为步进。")
         for dimension in self.dimensions:
@@ -149,8 +180,10 @@ class CreateBeerTastingForm(forms.Form):
             style=data["style"],
             abv=data["abv"],
             ibu=data["ibu"],
+            plato=data["plato"],
+            mouthfeel_profile=data["mouthfeel_profile"],
         )
-        for tag in data["flavor_tags"]:
+        for tag in self._get_or_create_flavor_tags(data["flavor_tag_input"]):
             BeerFlavorTag.objects.create(beer=beer, tag=tag)
         tasting = Tasting.objects.create(
             beer=beer,
@@ -181,34 +214,42 @@ class BeerEditForm(forms.Form):
     name = forms.CharField(label="啤酒名称", max_length=200)
     brand_name = forms.CharField(label="品牌", max_length=200, required=False)
     brewery_name = forms.CharField(label="酒厂", max_length=200, required=False)
-    origin_country_code = forms.CharField(label="国家代码", max_length=2)
-    style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none())
+    origin_country_code = forms.ChoiceField(label="国家", choices=COUNTRIES)
+    category = forms.ModelChoiceField(label="啤酒大类", queryset=BeerCategory.objects.none(), widget=forms.Select(attrs={"data-category-select": ""}))
+    style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none(), widget=StyleSelect(attrs={"data-style-select": ""}))
     abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
     ibu = forms.DecimalField(label="IBU 苦度", max_digits=6, decimal_places=2, required=False, min_value=Decimal("0"))
-    flavor_tags = forms.ModelMultipleChoiceField(label="风味标签", queryset=FlavorTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
+    plato = forms.DecimalField(label="麦汁浓度 Plato（°P）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"))
+    mouthfeel_profile = forms.ChoiceField(label="口感", required=False, choices=(("", "未填写"),) + Beer.MOUTHFEEL_CHOICES)
+    flavor_tag_input = forms.CharField(label="风味标签", required=False, help_text="用逗号或顿号分隔，例如：柑橘、松脂、焦糖。")
 
     def __init__(self, *args, beer, **kwargs):
         super().__init__(*args, **kwargs)
         self.beer = beer
-        self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True)
-        self.fields["flavor_tags"].queryset = FlavorTag.objects.all()
+        self.fields["category"].queryset = BeerCategory.objects.filter(is_active=True, deleted_at__isnull=True)
+        self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category")
         if not self.is_bound:
             self.initial.update({
                 "name": beer.name,
                 "brand_name": beer.brand.name if beer.brand else "",
                 "brewery_name": beer.brewery.name if beer.brewery else "",
                 "origin_country_code": beer.origin_country_code,
+                "category": beer.style.category if beer.style else None,
                 "style": beer.style,
                 "abv": beer.abv,
                 "ibu": beer.ibu,
-                "flavor_tags": [link.tag_id for link in beer.flavor_tag_links.all()],
+                "plato": beer.plato,
+                "mouthfeel_profile": beer.mouthfeel_profile,
+                "flavor_tag_input": "、".join(link.tag.name for link in beer.flavor_tag_links.all()),
             })
 
-    def clean_origin_country_code(self):
-        country_code = self.cleaned_data["origin_country_code"].strip().upper()
-        if len(country_code) != 2 or not country_code.isalpha():
-            raise forms.ValidationError("请填写两位大写国家代码，例如 CN、DE、US。")
-        return country_code
+    def clean(self):
+        cleaned_data = super().clean()
+        style = cleaned_data.get("style")
+        category = cleaned_data.get("category")
+        if style and category and style.category_id != category.id:
+            self.add_error("style", "请选择属于当前啤酒大类的类型。")
+        return cleaned_data
 
     def save(self):
         data = self.cleaned_data
@@ -217,11 +258,13 @@ class BeerEditForm(forms.Form):
         self.beer.style = data["style"]
         self.beer.abv = data["abv"]
         self.beer.ibu = data["ibu"]
+        self.beer.plato = data["plato"]
+        self.beer.mouthfeel_profile = data["mouthfeel_profile"]
         self.beer.brand = CreateBeerTastingForm._get_or_create_source(Brand, data["brand_name"], data["origin_country_code"])
         self.beer.brewery = CreateBeerTastingForm._get_or_create_source(Brewery, data["brewery_name"], data["origin_country_code"])
         self.beer.save()
         self.beer.flavor_tag_links.all().delete()
-        for tag in data["flavor_tags"]:
+        for tag in CreateBeerTastingForm._get_or_create_flavor_tags(data["flavor_tag_input"]):
             BeerFlavorTag.objects.create(beer=self.beer, tag=tag)
         return self.beer
 

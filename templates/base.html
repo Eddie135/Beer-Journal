@@ -8,19 +8,18 @@
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
 </head>
 <body>
-  <header class="site-header">
-    <nav class="site-nav" aria-label="主导航">
-      <a class="brand" href="{% url 'home' %}">BEER JOURNAL</a>
-      <div class="nav-links">
-        <a href="{% url 'home' %}">首页</a>
-        <a href="{% url 'beer-list' %}">我的啤酒</a>
-        <a class="button button-small" href="{% url 'beer-add' %}">添加啤酒</a>
-        <a href="{% url 'trash' %}">回收站</a>
-      </div>
-    </nav>
+  <header class="app-header">
+    <a class="app-wordmark" href="{% url 'beer-list' %}">BEER JOURNAL</a>
+    <a class="icon-button" href="{% url 'beer-add' %}" aria-label="添加啤酒">＋</a>
   </header>
-  <main class="page-shell">
+  <main class="app-content" id="app-content">
     {% block content %}{% endblock %}
   </main>
+  <nav class="bottom-tab-bar" aria-label="主要导航">
+    <a class="tab-item{% if request.resolver_match.url_name == 'beer-list' or request.resolver_match.url_name == 'beer-detail' %} is-active{% endif %}" href="{% url 'beer-list' %}"><span class="tab-icon">◒</span><span>我的啤酒</span></a>
+    <a class="tab-item{% if request.resolver_match.url_name == 'tasting-list' or request.resolver_match.url_name == 'tasting-detail' %} is-active{% endif %}" href="{% url 'tasting-list' %}"><span class="tab-icon">◷</span><span>饮用记录</span></a>
+    <a class="tab-item{% if request.resolver_match.url_name == 'personal-data' %} is-active{% endif %}" href="{% url 'personal-data' %}"><span class="tab-icon">◌</span><span>个人数据</span></a>
+  </nav>
+  <script defer src="{% static 'js/app.js' %}"></script>
 </body>
 </html>

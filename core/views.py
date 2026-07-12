@@ -13,7 +13,7 @@ from .models import Beer, Photo, Tasting
 from .photo_service import PhotoProcessingError, create_photos, delete_photo_keys
 
 def home(request):
-    return render(request, "home.html")
+    return redirect("beer-list")
 
 def health(request):
     return JsonResponse({"status": "ok", "service": "beer-journal"})
@@ -28,6 +28,20 @@ def beer_list(request):
     for beer in beers:
         beer.cover_photo = Photo.objects.filter(tasting__beer=beer, tasting__deleted_at__isnull=True).order_by("-tasting__tasted_at", "sort_order").first()
     return render(request, "beer_list.html", {"beers": beers})
+
+
+def tasting_list(request):
+    tastings = (
+        Tasting.objects.filter(deleted_at__isnull=True, beer__deleted_at__isnull=True)
+        .select_related("beer", "beer__style", "beer__style__category")
+        .prefetch_related("photos")
+        .order_by("-tasted_at", "-created_at")
+    )
+    return render(request, "tasting_list.html", {"tastings": tastings})
+
+
+def personal_data(request):
+    return render(request, "personal_data.html")
 
 
 def create_beer_tasting(request):

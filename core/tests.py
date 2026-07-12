@@ -26,7 +26,7 @@ from .models import (
     TastingTagLink,
 )
 
-class HealthPageTests(SimpleTestCase):
+class HealthPageTests(TestCase):
     def test_allowed_hosts_parser_accepts_lan_ip_without_wildcard(self):
         hosts = parse_allowed_hosts("localhost, 127.0.0.1, 192.168.31.101, ")
         self.assertEqual(hosts, ["localhost", "127.0.0.1", "192.168.31.101"])
@@ -34,8 +34,20 @@ class HealthPageTests(SimpleTestCase):
 
     def test_home_page(self):
         response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "BEER JOURNAL 运行正常")
+        self.assertRedirects(response, "/beers/", fetch_redirect_response=False)
+
+    def test_app_tabs_are_available(self):
+        for url in ("/beers/", "/tastings/", "/personal/"):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, "bottom-tab-bar")
+
+    def test_mobile_design_system_has_safe_bottom_navigation_rules(self):
+        stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")
+        self.assertIn("bottom-tab-bar", stylesheet)
+        self.assertIn("safe-area-inset-bottom", stylesheet)
+        self.assertIn("min-height: 44px", stylesheet)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
     def test_health_endpoint(self):
         response = self.client.get("/health/")
@@ -161,6 +173,7 @@ class AdminWorkflowTests(TestCase):
             "/admin/core/beer/add/",
             {
                 "name": "Admin Workflow IPA",
+                "category": str(self.category.pk),
                 "style": str(self.style.pk),
                 "brand": "",
                 "brewery": "",
@@ -239,10 +252,13 @@ class PublicWorkflowTests(TransactionTestCase):
             "brand_name": "测试品牌",
             "brewery_name": "测试酒厂",
             "origin_country_code": "DE",
+            "category": str(self.category.id),
             "style": str(self.style.id),
             "abv": "6.50",
             "ibu": "45.00",
-            "flavor_tags": [str(self.flavor.id)],
+            "plato": "14.50",
+            "mouthfeel_profile": "balanced",
+            "flavor_tag_input": "柑橘、松脂",
             "tasted_at": "2026-07-15T20:30",
             "drinking_location": "家中",
             "price_amount": "22.00",
@@ -259,9 +275,39 @@ class PublicWorkflowTests(TransactionTestCase):
         beer = Beer.objects.get(name="用户流程 IPA")
         tasting = beer.tastings.get()
         self.assertEqual(beer.origin_country_code, "DE")
-        self.assertEqual(beer.flavor_tag_links.count(), 1)
+        self.assertEqual(beer.plato, Decimal("14.50"))
+        self.assertEqual(beer.mouthfeel_profile, "balanced")
+        self.assertEqual(beer.flavor_tag_links.count(), 2)
         self.assertEqual(tasting.rating_values.get().dimension_name_snapshot, "香气")
         self.assertEqual(tasting.tag_links.count(), 2)
+
+    def test_beer_form_uses_chinese_countries_and_category_matched_styles(self):
+        response = self.client.get("/beers/add/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "德国")
+        self.assertContains(response, 'data-category-select')
+        self.assertContains(response, 'data-style-select')
+
+        lager_category = BeerCategory.objects.create(name="Lager", normalized_name="public-lager", code="public-lager")
+        lager_style = BeerStyle.objects.create(name="皮尔森", normalized_name="public-pilsner", category=lager_category)
+        payload = self._valid_payload()
+        payload["style"] = str(lager_style.id)
+        response = self.client.post("/beers/add/", payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "请选择属于当前啤酒大类的类型。")
+        self.assertFalse(Beer.objects.filter(name="用户流程 IPA").exists())
+
+    def test_custom_flavor_tags_are_normalized_and_reused(self):
+        payload = self._valid_payload()
+        payload["flavor_tag_input"] = "  Citrus、柑橘，cItRuS "
+        response = self.client.post("/beers/add/", payload)
+        self.assertEqual(response.status_code, 302)
+        beer = Beer.objects.get(name="用户流程 IPA")
+        self.assertEqual(
+            set(beer.flavor_tag_links.values_list("tag__normalized_name", flat=True)),
+            {"citrus", "柑橘"},
+        )
+        self.assertEqual(FlavorTag.objects.filter(normalized_name="citrus").count(), 1)
 
     def test_invalid_first_tasting_does_not_create_beer(self):
         payload = self._valid_payload()
@@ -284,6 +330,8 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(list_response.status_code, 200)
         self.assertContains(list_response, "列表测试啤酒")
         self.assertContains(list_response, "8.0")
+        self.assertContains(list_response, "🇨🇳")
+        self.assertContains(list_response, "中国")
         beer_response = self.client.get(f"/beers/{beer.id}/")
         self.assertEqual(beer_response.status_code, 200)
         self.assertContains(beer_response, "柑橘")
@@ -330,11 +378,14 @@ class PublicWorkflowTests(TransactionTestCase):
         tasting = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)), overall_score=Decimal("7.0"))
         beer_response = self.client.post(
             f"/beers/{beer.id}/edit/",
-            {"name": "已编辑啤酒", "brand_name": "", "brewery_name": "", "origin_country_code": "CN", "style": str(self.style.id), "abv": "5.00", "ibu": "20.00", "flavor_tags": [str(self.flavor.id)]},
+            {"name": "已编辑啤酒", "brand_name": "", "brewery_name": "", "origin_country_code": "CN", "category": str(self.category.id), "style": str(self.style.id), "abv": "5.00", "ibu": "20.00", "plato": "12.50", "mouthfeel_profile": "crisp", "flavor_tag_input": "柑橘、焦糖"},
         )
         self.assertEqual(beer_response.status_code, 302)
         beer.refresh_from_db()
         self.assertEqual(beer.name, "已编辑啤酒")
+        self.assertEqual(beer.plato, Decimal("12.50"))
+        self.assertEqual(beer.mouthfeel_profile, "crisp")
+        self.assertEqual(set(beer.flavor_tag_links.values_list("tag__name", flat=True)), {"柑橘", "焦糖"})
         tasting_response = self.client.post(
             f"/tastings/{tasting.id}/edit/",
             {"tasted_at": "2026-07-16T20:30", "drinking_location": "酒吧", "price_amount": "30.00", "overall_score": "8.0", "notes": "已编辑", "food_tags": [str(self.food.id)], "occasion_tags": [str(self.occasion.id)], f"rating_{self.dimension.id}": "8.0"},
