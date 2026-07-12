@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}我的啤酒 · BEER JOURNAL{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><p class="eyebrow">啤酒库</p><h1>我的啤酒</h1></div><a class="button" href="{% url 'beer-add' %}">添加啤酒</a></div>
+  <section class="beer-grid">
+    {% for beer in beers %}
+      <article class="beer-card">
+        <div class="image-placeholder" aria-label="暂无图片">暂无图片</div>
+        <div class="card-body">
+          <p class="muted">{{ beer.origin_country_code|default:"未填写国家" }}</p>
+          <h2><a href="{% url 'beer-detail' beer.id %}">{{ beer.name }}</a></h2>
+          <p>{{ beer.style|default:"未填写类型" }}</p>
+          <p class="score">平均评分：{% if beer.average_score is not None %}{{ beer.average_score|floatformat:1 }}{% else %}暂无{% endif %}</p>
+        </div>
+      </article>
+    {% empty %}
+      <section class="empty-state"><h2>还没有啤酒记录</h2><p>从第一瓶啤酒开始建立你的资料库。</p><a class="button" href="{% url 'beer-add' %}">添加啤酒</a></section>
+    {% endfor %}
+  </section>
+{% endblock %}

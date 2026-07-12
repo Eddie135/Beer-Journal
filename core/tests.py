@@ -12,6 +12,8 @@ from .models import (
     RatingDimension,
     Tasting,
     TastingRatingValue,
+    TastingTag,
+    TastingTagLink,
 )
 
 class HealthPageTests(SimpleTestCase):
@@ -178,3 +180,70 @@ class AdminWorkflowTests(TestCase):
         rating = tasting.rating_values.get()
         self.assertEqual(rating.dimension_name_snapshot, "香气")
         self.assertEqual(rating.scale_max_snapshot, Decimal("10.000"))
+
+
+class PublicWorkflowTests(TestCase):
+    def setUp(self):
+        self.style = BeerStyle.objects.create(name="IPA", normalized_name="public-ipa")
+        self.flavor = FlavorTag.objects.create(name="柑橘", normalized_name="public-柑橘", category="水果")
+        self.food = TastingTag.objects.create(name="烧烤", normalized_name="public-烧烤", category="food_pairing")
+        self.occasion = TastingTag.objects.create(name="独饮", normalized_name="public-独饮", category="occasion")
+        self.dimension = RatingDimension.objects.create(code="public_aroma", name="香气", sort_order=1)
+
+    def _valid_payload(self):
+        return {
+            "name": "用户流程 IPA",
+            "brand_name": "测试品牌",
+            "brewery_name": "测试酒厂",
+            "origin_country_code": "DE",
+            "style": str(self.style.id),
+            "abv": "6.50",
+            "ibu": "45.00",
+            "flavor_tags": [str(self.flavor.id)],
+            "tasted_at": "2026-07-15T20:30",
+            "drinking_location": "家中",
+            "price_amount": "22.00",
+            "overall_score": "8.5",
+            "notes": "第一次真实流程测试。",
+            "food_tags": [str(self.food.id)],
+            "occasion_tags": [str(self.occasion.id)],
+            f"rating_{self.dimension.id}": "8.0",
+        }
+
+    def test_create_page_creates_beer_and_first_tasting_together(self):
+        response = self.client.post("/beers/add/", self._valid_payload())
+        self.assertEqual(response.status_code, 302)
+        beer = Beer.objects.get(name="用户流程 IPA")
+        tasting = beer.tastings.get()
+        self.assertEqual(beer.origin_country_code, "DE")
+        self.assertEqual(beer.flavor_tag_links.count(), 1)
+        self.assertEqual(tasting.rating_values.get().dimension_name_snapshot, "香气")
+        self.assertEqual(tasting.tag_links.count(), 2)
+
+    def test_invalid_first_tasting_does_not_create_beer(self):
+        payload = self._valid_payload()
+        payload["overall_score"] = "8.3"
+        response = self.client.post("/beers/add/", payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "总评分必须以 0.5 为步进。")
+        self.assertFalse(Beer.objects.filter(name="用户流程 IPA").exists())
+
+    def test_list_and_detail_pages_show_created_records(self):
+        beer = Beer.objects.create(name="列表测试啤酒", style=self.style, origin_country_code="CN")
+        tasting = Tasting.objects.create(
+            beer=beer,
+            tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)),
+            overall_score=Decimal("8.0"),
+        )
+        TastingTagLink.objects.create(tasting=tasting, tag=self.food)
+        BeerFlavorTag.objects.create(beer=beer, tag=self.flavor)
+        list_response = self.client.get("/beers/")
+        self.assertEqual(list_response.status_code, 200)
+        self.assertContains(list_response, "列表测试啤酒")
+        self.assertContains(list_response, "8.0")
+        beer_response = self.client.get(f"/beers/{beer.id}/")
+        self.assertEqual(beer_response.status_code, 200)
+        self.assertContains(beer_response, "柑橘")
+        tasting_response = self.client.get(f"/tastings/{tasting.id}/")
+        self.assertEqual(tasting_response.status_code, 200)
+        self.assertContains(tasting_response, "烧烤")

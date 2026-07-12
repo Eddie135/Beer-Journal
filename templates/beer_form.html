@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}添加啤酒 · BEER JOURNAL{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><p class="eyebrow">一次完成</p><h1>添加啤酒与首次品饮</h1><p>保存后会同时建立啤酒资料和第一条品饮记录。</p></div></div>
+  <form method="post" class="record-form">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+    <fieldset><legend>啤酒基础资料</legend>
+      {% for field in form.beer_fields %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>{% endfor %}
+    </fieldset>
+    <fieldset><legend>第一次品饮</legend>
+      {% for field in form.tasting_fields %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
+    </fieldset>
+    <fieldset><legend>多维评分（可留空）</legend>
+      <div class="ratings-grid">{% for field in form.rating_fields %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}</div>
+    </fieldset>
+    <button class="button" type="submit">保存啤酒与首次品饮</button>
+  </form>
+{% endblock %}

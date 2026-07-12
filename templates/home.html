@@ -1,6 +1,9 @@
-<!doctype html>
-<html lang="zh-CN">
-  <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>BEER JOURNAL</title></head>
-  <body><main><h1>BEER JOURNAL 运行正常</h1><p>阶段 1 最小可运行骨架已启动。</p><p><a href="/health/">查看健康检查</a></p></main></body>
-</html>
-
+{% extends "base.html" %}
+{% block content %}
+  <section class="hero">
+    <p class="eyebrow">个人啤酒数据库</p>
+    <h1>BEER JOURNAL 运行正常</h1>
+    <p>记录每一款啤酒，也保留每一次品饮的真实感受。</p>
+    <p><a class="button" href="{% url 'beer-add' %}">添加第一瓶啤酒</a></p>
+  </section>
+{% endblock %}

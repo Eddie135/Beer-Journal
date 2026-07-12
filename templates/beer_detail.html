@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ beer.name }} · BEER JOURNAL{% endblock %}
+{% block content %}
+  <div class="page-heading"><div><p class="eyebrow">{{ beer.origin_country_code|default:"未填写国家" }}</p><h1>{{ beer.name }}</h1><p>{{ beer.style|default:"未填写类型" }}</p></div><a class="button" href="{% url 'beer-add' %}">添加啤酒</a></div>
+  <section class="detail-grid">
+    <article class="panel"><h2>基础资料</h2><dl><dt>品牌</dt><dd>{{ beer.brand|default:"未填写" }}</dd><dt>酒厂</dt><dd>{{ beer.brewery|default:"未填写" }}</dd><dt>国家</dt><dd>{{ beer.origin_country_code|default:"未填写" }}</dd><dt>ABV</dt><dd>{% if beer.abv is not None %}{{ beer.abv }}%{% else %}未填写{% endif %}</dd><dt>IBU</dt><dd>{{ beer.ibu|default:"未填写" }}</dd></dl></article>
+    <article class="panel"><h2>风味标签</h2><div class="tag-list">{% for link in beer.flavor_tag_links.all %}<span class="tag">{{ link.tag.name }}</span>{% empty %}<p class="muted">未填写风味标签。</p>{% endfor %}</div></article>
+  </section>
+  <section><div class="section-heading"><h2>品饮历史</h2><span>{{ tastings|length }} 次</span></div>{% for tasting in tastings %}<article class="tasting-row"><div><h3><a href="{% url 'tasting-detail' tasting.id %}">{{ tasting.tasted_at|date:"Y年n月j日 H:i" }}</a></h3><p>{{ tasting.drinking_location|default:"未填写地点" }} · 总评分：{{ tasting.overall_score|default:"暂无" }}</p></div><a href="{% url 'tasting-detail' tasting.id %}">查看</a></article>{% empty %}<p class="empty-state">暂无品饮记录。</p>{% endfor %}</section>
+{% endblock %}

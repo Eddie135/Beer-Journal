@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}品饮记录 · BEER JOURNAL{% endblock %}
+{% block content %}
+  <p class="eyebrow"><a href="{% url 'beer-detail' tasting.beer.id %}">{{ tasting.beer.name }}</a></p><h1>品饮记录</h1>
+  <section class="detail-grid"><article class="panel"><h2>本次信息</h2><dl><dt>时间</dt><dd>{{ tasting.tasted_at|date:"Y年n月j日 H:i" }}</dd><dt>地点</dt><dd>{{ tasting.drinking_location|default:"未填写" }}</dd><dt>价格</dt><dd>{% if tasting.price_amount is not None %}{{ tasting.price_amount }} {{ tasting.currency_code }}{% else %}未填写{% endif %}</dd><dt>总评分</dt><dd>{{ tasting.overall_score|default:"未评分" }}</dd></dl></article><article class="panel"><h2>品饮笔记</h2><p>{{ tasting.notes|default:"未填写笔记。"|linebreaksbr }}</p></article></section>
+  <section class="detail-grid"><article class="panel"><h2>多维评分</h2><dl>{% for rating in tasting.rating_values.all %}<dt>{{ rating.dimension_name_snapshot }}</dt><dd>{{ rating.value }}</dd>{% empty %}<p class="muted">未填写维度评分。</p>{% endfor %}</dl></article><article class="panel"><h2>搭配与场景</h2><div class="tag-list">{% for link in tasting.tag_links.all %}<span class="tag">{{ link.tag.name }}</span>{% empty %}<p class="muted">未填写搭配或场景。</p>{% endfor %}</div></article></section>
+{% endblock %}
