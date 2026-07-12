@@ -1,10 +1,15 @@
 import os
 from pathlib import Path
 
+
+def parse_allowed_hosts(value):
+    return [host.strip() for host in value.split(",") if host.strip()]
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "development-only-change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
-ALLOWED_HOSTS = [h.strip() for h in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if h.strip()]
+ALLOWED_HOSTS = parse_allowed_hosts(os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1"))
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

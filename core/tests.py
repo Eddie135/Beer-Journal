@@ -10,6 +10,8 @@ from django.test.utils import override_settings
 from django.utils import timezone
 from PIL import Image
 
+from config.settings import parse_allowed_hosts
+
 from .models import (
     Beer,
     BeerFlavorTag,
@@ -23,6 +25,11 @@ from .models import (
 )
 
 class HealthPageTests(SimpleTestCase):
+    def test_allowed_hosts_parser_accepts_lan_ip_without_wildcard(self):
+        hosts = parse_allowed_hosts("localhost, 127.0.0.1, 192.168.31.101, ")
+        self.assertEqual(hosts, ["localhost", "127.0.0.1", "192.168.31.101"])
+        self.assertNotIn("*", hosts)
+
     def test_home_page(self):
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
