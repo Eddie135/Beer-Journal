@@ -317,3 +317,31 @@ class PublicWorkflowTests(TransactionTestCase):
         self.client.post(f"/beers/{beer.id}/restore/")
         beer.refresh_from_db()
         self.assertIsNone(beer.deleted_at)
+
+    def test_repeat_tasting_creates_independent_history_in_time_order(self):
+        beer = Beer.objects.create(name="长期记录啤酒", style=self.style, origin_country_code="DE")
+        oldest = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 10, 19, 0)), overall_score=Decimal("6.0"), notes="第一次")
+        middle = Tasting.objects.create(beer=beer, tasted_at=timezone.make_aware(datetime(2026, 7, 12, 19, 0)), overall_score=Decimal("7.0"), notes="第二次")
+        payload = {
+            "tasted_at": "2026-07-15T20:30",
+            "drinking_location": "家中",
+            "price_amount": "25.00",
+            "overall_score": "8.0",
+            "notes": "第三次",
+            "food_tags": [str(self.food.id)],
+            "occasion_tags": [str(self.occasion.id)],
+            f"rating_{self.dimension.id}": "8.0",
+        }
+        response = self.client.post(f"/beers/{beer.id}/tastings/add/", payload)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(beer.tastings.count(), 3)
+        newest = beer.tastings.get(notes="第三次")
+        detail = self.client.get(f"/beers/{beer.id}/")
+        self.assertEqual(detail.status_code, 200)
+        content = detail.content.decode()
+        self.assertLess(content.index("2026年7月15日 20:30"), content.index("2026年7月12日 19:00"))
+        self.assertLess(content.index("2026年7月12日 19:00"), content.index("2026年7月10日 19:00"))
+        self.client.post(f"/tastings/{middle.id}/delete/")
+        self.assertTrue(Tasting.objects.get(id=middle.id).deleted_at)
+        self.assertIsNone(Tasting.objects.get(id=oldest.id).deleted_at)
+        self.assertIsNone(Tasting.objects.get(id=newest.id).deleted_at)

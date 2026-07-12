@@ -236,19 +236,19 @@ class TastingEditForm(forms.Form):
     occasion_tags = forms.ModelMultipleChoiceField(label="饮用场景", queryset=TastingTag.objects.none(), required=False, widget=forms.CheckboxSelectMultiple)
     photos = MultipleFileField(label="新增照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
-    def __init__(self, *args, tasting, **kwargs):
+    def __init__(self, *args, tasting=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.tasting = tasting
         self.fields["food_tags"].queryset = TastingTag.objects.filter(category="food_pairing")
         self.fields["occasion_tags"].queryset = TastingTag.objects.filter(category="occasion")
         self.dimensions = list(RatingDimension.objects.filter(is_active=True).order_by("sort_order", "code"))
-        existing = {rating.dimension_id: rating for rating in tasting.rating_values.all()}
+        existing = {rating.dimension_id: rating for rating in tasting.rating_values.all()} if tasting else {}
         for dimension in self.dimensions:
             field_name = CreateBeerTastingForm._rating_field_name(dimension)
             self.fields[field_name] = forms.DecimalField(label=f"{dimension.name}（{dimension.scale_min}–{dimension.scale_max}）", max_digits=6, decimal_places=3, required=False, min_value=dimension.scale_min, max_value=dimension.scale_max)
             if not self.is_bound and dimension.id in existing:
                 self.initial[field_name] = existing[dimension.id].value
-        if not self.is_bound:
+        if not self.is_bound and tasting:
             tags = list(tasting.tag_links.values_list("tag_id", "tag__category"))
             self.initial.update({
                 "tasted_at": timezone.localtime(tasting.tasted_at).strftime("%Y-%m-%dT%H:%M"),
@@ -274,8 +274,12 @@ class TastingEditForm(forms.Form):
                 self.add_error(field_name, f"评分必须以 {dimension.step} 为步进。")
         return cleaned_data
 
-    def save(self):
+    def save(self, beer=None):
         data = self.cleaned_data
+        if self.tasting is None:
+            if beer is None:
+                raise ValueError("创建品饮记录时必须提供啤酒。")
+            self.tasting = Tasting(beer=beer)
         self.tasting.tasted_at = data["tasted_at"]
         self.tasting.drinking_location = data["drinking_location"]
         self.tasting.price_amount = data["price_amount"]

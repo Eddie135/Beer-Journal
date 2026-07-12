@@ -51,13 +51,28 @@ def beer_detail(request, beer_id):
         Beer.objects.select_related("style", "brand", "brewery").filter(deleted_at__isnull=True),
         id=beer_id,
     )
-    tastings = (
+    tastings = list(
         beer.tastings.filter(deleted_at__isnull=True)
         .prefetch_related("rating_values__dimension", "tag_links__tag", "photos")
         .order_by("-tasted_at", "-created_at")
     )
     beer.cover_photo = Photo.objects.filter(tasting__beer=beer, tasting__deleted_at__isnull=True).order_by("-tasting__tasted_at", "sort_order").first()
-    return render(request, "beer_detail.html", {"beer": beer, "tastings": tastings})
+    stats = beer.tastings.filter(deleted_at__isnull=True).aggregate(average_score=Avg("overall_score"))
+    return render(request, "beer_detail.html", {"beer": beer, "tastings": tastings, "average_score": stats["average_score"], "latest_tasting": tastings[0] if tastings else None})
+
+
+def create_tasting(request, beer_id):
+    beer = get_object_or_404(Beer.objects.filter(deleted_at__isnull=True), id=beer_id)
+    form = TastingEditForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            with transaction.atomic():
+                tasting = form.save(beer=beer)
+                create_photos(tasting, form.cleaned_data["photos"])
+            return redirect("beer-detail", beer_id=beer.id)
+        except PhotoProcessingError as exc:
+            form.add_error("photos", str(exc))
+    return render(request, "tasting_create.html", {"form": form, "beer": beer})
 
 
 def tasting_detail(request, tasting_id):

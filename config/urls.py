@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path
 from core.views import (
     beer_detail, beer_list, create_beer_tasting, delete_beer, delete_photo, delete_tasting,
-    edit_beer, edit_tasting, health, home, photo_file, restore_beer, restore_tasting, tasting_detail, trash,
+    create_tasting, edit_beer, edit_tasting, health, home, photo_file, restore_beer, restore_tasting, tasting_detail, trash,
 )
 
 urlpatterns = [
@@ -11,6 +11,7 @@ urlpatterns = [
     path("beers/", beer_list, name="beer-list"),
     path("beers/add/", create_beer_tasting, name="beer-add"),
     path("beers/<uuid:beer_id>/", beer_detail, name="beer-detail"),
+    path("beers/<uuid:beer_id>/tastings/add/", create_tasting, name="tasting-add"),
     path("beers/<uuid:beer_id>/edit/", edit_beer, name="beer-edit"),
     path("beers/<uuid:beer_id>/delete/", delete_beer, name="beer-delete"),
     path("beers/<uuid:beer_id>/restore/", restore_beer, name="beer-restore"),
