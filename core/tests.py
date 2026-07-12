@@ -47,12 +47,23 @@ class HealthPageTests(TestCase):
 
     def test_mobile_design_system_has_safe_bottom_navigation_rules(self):
         stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")
+        self.assertIn("--bg: #f7f7f5", stylesheet)
+        self.assertIn("--accent: #f4a340", stylesheet)
+        self.assertIn("--radius-card: 24px", stylesheet)
+        self.assertIn("--shadow-card: 0 8px 30px rgba(0, 0, 0, .06)", stylesheet)
+        self.assertIn("--motion-fast: 150ms", stylesheet)
+        self.assertIn("--motion-slow: 300ms", stylesheet)
         self.assertIn("bottom-tab-bar", stylesheet)
         self.assertIn("safe-area-inset-bottom", stylesheet)
         self.assertIn("164px", stylesheet)
         self.assertIn("height: 52px", stylesheet)
-        self.assertIn("min-height: 44px", stylesheet)
+        self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
+
+    def test_base_template_uses_versioned_v3_design_assets(self):
+        response = self.client.get("/beers/")
+        self.assertContains(response, "css/app.css?v=20260712-v3a")
+        self.assertContains(response, "js/app.js?v=20260712-v3a")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
