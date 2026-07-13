@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}BEER JOURNAL{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-experience">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-detail">
 </head>
 <body>
   <header class="app-header">
@@ -19,6 +19,6 @@
     <a class="tab-item{% if request.resolver_match.url_name == 'tasting-list' or request.resolver_match.url_name == 'tasting-detail' %} is-active{% endif %}" href="{% url 'tasting-list' %}"><span class="tab-icon">◷</span><span>饮用记录</span></a>
     <a class="tab-item{% if request.resolver_match.url_name == 'personal-data' %} is-active{% endif %}" href="{% url 'personal-data' %}"><span class="tab-icon">◌</span><span>个人数据</span></a>
   </nav>
-  <script defer src="{% static 'js/app.js' %}?v=20260713-experience"></script>
+  <script defer src="{% static 'js/app.js' %}?v=20260713-detail"></script>
 </body>
 </html>

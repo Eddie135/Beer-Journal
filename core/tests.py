@@ -60,10 +60,10 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_experience_score_assets(self):
+    def test_base_template_uses_versioned_detail_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260713-experience")
-        self.assertContains(response, "js/app.js?v=20260713-experience")
+        self.assertContains(response, "css/app.css?v=20260713-detail")
+        self.assertContains(response, "js/app.js?v=20260713-detail")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -369,6 +369,10 @@ class PublicWorkflowTests(TransactionTestCase):
             beer=beer,
             tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)),
             overall_score=Decimal("8.0"),
+            drinking_location="家中",
+            capacity=330,
+            bottle_count=Decimal("1.00"),
+            notes="柑橘香气很明显。",
         )
         TastingTagLink.objects.create(tasting=tasting, tag=self.food)
         BeerFlavorTag.objects.create(beer=beer, tag=self.flavor)
@@ -385,6 +389,12 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(beer_response, "醇厚")
         self.assertContains(beer_response, "★★★★☆")
         self.assertNotContains(beer_response, "IBU")
+        self.assertContains(beer_response, "beer-profile-hero")
+        self.assertContains(beer_response, "detail-summary")
+        self.assertContains(beer_response, "最近饮用容量")
+        self.assertContains(beer_response, "330 ml")
+        self.assertContains(beer_response, "柑橘香气很明显。")
+        self.assertContains(beer_response, "detail-primary-action")
         tasting_response = self.client.get(f"/tastings/{tasting.id}/")
         self.assertEqual(tasting_response.status_code, 200)
         self.assertNotContains(tasting_response, "烧烤")
