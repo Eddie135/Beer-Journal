@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
@@ -13,7 +14,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 from PIL import Image
 
-from config.settings import parse_allowed_hosts
+from config.settings import database_config_from_url, parse_allowed_hosts, parse_bool, parse_nonnegative_int
 
 from .models import (
     Beer,
@@ -35,6 +36,34 @@ class HealthPageTests(TestCase):
         hosts = parse_allowed_hosts("localhost, 127.0.0.1, 192.168.31.101, ")
         self.assertEqual(hosts, ["localhost", "127.0.0.1", "192.168.31.101"])
         self.assertNotIn("*", hosts)
+
+
+class ProductionSettingsTests(TestCase):
+    def test_database_url_supports_encoded_credentials_and_options(self):
+        config = database_config_from_url(
+            "postgresql://beer%5Fjournal:pa%24%24word@postgres:5433/beer_journal?sslmode=require"
+        )
+
+        self.assertEqual(config["ENGINE"], "django.db.backends.postgresql")
+        self.assertEqual(config["NAME"], "beer_journal")
+        self.assertEqual(config["USER"], "beer_journal")
+        self.assertEqual(config["PASSWORD"], "pa$$word")
+        self.assertEqual(config["HOST"], "postgres")
+        self.assertEqual(config["PORT"], "5433")
+        self.assertEqual(config["OPTIONS"], {"sslmode": "require"})
+
+    def test_database_url_rejects_invalid_protocol_and_missing_database(self):
+        with self.assertRaisesMessage(ImproperlyConfigured, "DATABASE_URL 必须使用"):
+            database_config_from_url("mysql://db/example")
+        with self.assertRaisesMessage(ImproperlyConfigured, "DATABASE_URL 缺少数据库名称"):
+            database_config_from_url("postgresql://user:password@postgres")
+
+    def test_boolean_and_hsts_parsers_keep_safe_defaults(self):
+        self.assertTrue(parse_bool("true"))
+        self.assertFalse(parse_bool("0"))
+        self.assertFalse(parse_bool(None))
+        self.assertEqual(parse_nonnegative_int("31536000"), 31536000)
+        self.assertEqual(parse_nonnegative_int(None), 0)
 
     def test_home_page(self):
         response = self.client.get("/")

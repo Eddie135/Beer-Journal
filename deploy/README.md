@@ -30,12 +30,11 @@ docker compose --env-file ../.env.production -f docker-compose.prod.yml <命令>
 - `letsencrypt_data` 和 `certbot_webroot` 是证书任务稍后使用的 Docker 命名卷；本阶段不会创建它们。
 - `web` 和 `postgres` 没有主机端口映射。仅 Nginx 的 80/443 映射会在未来明确启动 Nginx 时生效。
 
-## 当前代码的两个前置项
+## 启动前仍需完成的前置项
 
-这些模板尚不能作为“立即启动生产服务”的授权，下一阶段必须先完成并验证：
+v4.0-C6 已补齐 `DATABASE_URL`、`STATIC_ROOT`、可信反向代理头和由环境变量控制的 Cookie/CSRF/HTTPS 设置。模板同时保留 `POSTGRES_*`，因此本地开发继续兼容。
 
-1. `config/settings.py` 当前只读取 `POSTGRES_*`，尚未解析 `DATABASE_URL`；模板同时保留两套字段以保持兼容。
-2. 当前没有 `STATIC_ROOT` 和完整的 HTTPS/代理安全设置；必须补齐生产设置、登录保护和 `check --deploy` 后，才可收集静态文件或启动服务。
+正式启动前仍必须完成并验证单用户登录保护与 `check --deploy`。当前所有私人页面尚未强制登录，不能直接对公网启动。
 
 ## 资源限制
 
