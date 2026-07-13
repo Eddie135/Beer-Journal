@@ -60,10 +60,10 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_tasting_assets(self):
+    def test_base_template_uses_versioned_profile_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260713-tasting")
-        self.assertContains(response, "js/app.js?v=20260713-tasting")
+        self.assertContains(response, "css/app.css?v=20260713-profile")
+        self.assertContains(response, "js/app.js?v=20260713-profile")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -496,14 +496,14 @@ class PublicWorkflowTests(TransactionTestCase):
 
     def test_personal_data_statistics_exclude_deleted_records_and_sort_recent_tastings(self):
         citrus = FlavorTag.objects.create(name="数据柑橘", normalized_name="insight-citrus", category="自定义")
-        first_beer = Beer.objects.create(name="数据啤酒一", style=self.style, origin_country_code="DE", abv=Decimal("6.0"), plato=Decimal("12.0"))
-        second_beer = Beer.objects.create(name="数据啤酒二", style=self.style, origin_country_code="DE", abv=Decimal("8.0"), plato=Decimal("14.0"))
+        first_beer = Beer.objects.create(name="数据啤酒一", style=self.style, origin_country_code="DE", abv=Decimal("6.0"), plato=Decimal("12.0"), mouthfeel_score=1, bitterness_score=2, flavor_complexity_score=3)
+        second_beer = Beer.objects.create(name="数据啤酒二", style=self.style, origin_country_code="DE", abv=Decimal("8.0"), plato=Decimal("14.0"), mouthfeel_score=5, bitterness_score=4, flavor_complexity_score=5)
         deleted_beer = Beer.objects.create(name="已删除数据啤酒", style=self.style, origin_country_code="DE", abv=Decimal("20.0"), plato=Decimal("30.0"))
         BeerFlavorTag.objects.create(beer=first_beer, tag=citrus)
         BeerFlavorTag.objects.create(beer=second_beer, tag=citrus)
         now = timezone.now()
-        older = Tasting.objects.create(beer=first_beer, tasted_at=now - timedelta(days=3), overall_score=Decimal("8.0"), price_amount=Decimal("20.0"))
-        newer = Tasting.objects.create(beer=second_beer, tasted_at=now - timedelta(days=1), overall_score=Decimal("6.0"), price_amount=Decimal("40.0"))
+        older = Tasting.objects.create(beer=first_beer, tasted_at=now - timedelta(days=3), overall_score=Decimal("8.0"), price_amount=Decimal("20.0"), purchase_channel="online")
+        newer = Tasting.objects.create(beer=second_beer, tasted_at=now - timedelta(days=1), overall_score=Decimal("6.0"), price_amount=Decimal("40.0"), purchase_channel="online")
         deleted_tasting = Tasting.objects.create(beer=second_beer, tasted_at=now, overall_score=Decimal("10.0"), price_amount=Decimal("100.0"))
         deleted_tasting.deleted_at = now
         deleted_tasting.save(update_fields=["deleted_at", "updated_at"])
@@ -520,13 +520,24 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(stats["average_abv"], Decimal("7.0"))
         self.assertEqual(stats["average_plato"], Decimal("13.0"))
         self.assertEqual(stats["average_price"], Decimal("30.0"))
+        self.assertEqual([item["score"] for item in response.context["experience_scores"]], [Decimal("3"), Decimal("3"), Decimal("4")])
         self.assertEqual(response.context["preferences"]["flavor_tag"]["name"], "数据柑橘")
+        self.assertEqual(response.context["country_distribution"][0]["beer__origin_country_code"], "DE")
+        self.assertEqual(response.context["country_distribution"][0]["count"], 2)
+        self.assertEqual(response.context["category_distribution"][0]["count"], 2)
+        self.assertEqual(response.context["flavor_distribution"][0]["name"], "数据柑橘")
+        self.assertEqual(response.context["purchase_channel"]["label"], "线上")
         self.assertEqual([item["tasting_count"] for item in response.context["monthly_trends"]][-1], 2)
         content = response.content.decode()
         self.assertContains(response, "数据柑橘")
         self.assertNotContains(response, deleted_beer.name)
         self.assertLess(content.index(newer.beer.name), content.index(older.beer.name))
-        self.assertEqual(content.count('class="trend-row"'), 12)
+        self.assertContains(response, "profile-insight-hero")
+        self.assertContains(response, "我的口味画像")
+        self.assertContains(response, "国家分布")
+        self.assertContains(response, "类型分布")
+        self.assertContains(response, "花费习惯")
+        self.assertEqual(content.count('class="profile-trend-column"'), 12)
 
     def test_tasting_timeline_and_beer_selection_search_are_available(self):
         beer = Beer.objects.create(name="搜索用 IPA", style=self.style, origin_country_code="DE")

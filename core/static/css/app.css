@@ -412,6 +412,64 @@ dd { margin: 0; }
 .diary-info-card dd { font-weight: 700; }
 .diary-gallery-section { margin-bottom: 8px; }
 
+/* v3.0-D personal beer profile */
+.profile-insight-hero { position: relative; overflow: hidden; padding: 25px 22px 21px; background: linear-gradient(135deg, #fffdf9, #fff 64%, #eef0ff); }
+.profile-insight-hero::after { position: absolute; top: -49px; right: -44px; width: 160px; height: 160px; border-radius: 50%; background: rgba(139, 108, 255, .13); content: ""; }
+.profile-insight-copy { position: relative; z-index: 1; }
+.profile-insight-copy h1 { margin: 0; font-size: clamp(2.3rem, 10.5vw, 3.45rem); letter-spacing: -.07em; line-height: .98; }
+.profile-insight-copy > p:last-child { max-width: 19rem; margin: 10px 0 21px; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.profile-core-stats { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.profile-core-stats div { min-width: 0; padding: 11px 9px; border-radius: 16px; background: rgba(255, 255, 255, .88); box-shadow: 0 4px 14px rgba(24, 25, 27, .04); }
+.profile-core-stats strong { display: block; overflow: hidden; color: var(--ink); font-size: clamp(1.2rem, 6vw, 1.7rem); letter-spacing: -.05em; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.profile-core-stats div:first-child strong { color: #b67010; }
+.profile-core-stats div:nth-child(2) strong { color: var(--fresh); }
+.profile-core-stats div:nth-child(3) strong { color: var(--blue); }
+.profile-core-stats span { display: block; margin-top: 6px; color: var(--muted); font-size: .69rem; font-weight: 700; white-space: nowrap; }
+.profile-section { margin-top: 30px; }
+.profile-section .section-heading { margin: 0 2px 11px; }
+.experience-profile { padding: 12px; }
+.experience-profile-row { min-height: 62px; display: grid; grid-template-columns: minmax(74px, 1fr) 30px auto 30px; gap: 7px; align-items: center; padding: 10px 8px; border-bottom: 1px solid var(--line); }
+.experience-profile-row:last-child { border-bottom: 0; }
+.experience-profile-row div { display: grid; gap: 3px; }
+.experience-profile-row strong { font-size: .88rem; }
+.experience-profile-row small, .experience-profile-row > span { color: var(--muted); font-size: .67rem; font-weight: 700; }
+.experience-profile-row > span { text-align: center; }
+.experience-profile-row b { color: #b67010; font-size: .93rem; letter-spacing: .01em; white-space: nowrap; }
+.profile-preferences { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.profile-preference-card { min-height: 130px; display: flex; flex-direction: column; justify-content: space-between; padding: 17px; }
+.profile-preference-card span, .spending-card span { color: var(--muted); font-size: .75rem; line-height: 1.35; }
+.profile-preference-card strong { display: block; overflow-wrap: anywhere; font-size: 1.12rem; letter-spacing: -.03em; line-height: 1.2; }
+.profile-preference-card small, .spending-card small { color: #a97431; font-size: .72rem; font-weight: 800; }
+.profile-chart { display: grid; gap: 13px; padding: 18px; }
+.chart-bar-row { display: grid; grid-template-columns: minmax(76px, 1fr) minmax(80px, 1.8fr) 24px; gap: 10px; align-items: center; }
+.chart-bar-row > span { overflow: hidden; font-size: .8rem; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.chart-bar-row > b { color: var(--muted); font-size: .75rem; text-align: right; }
+.chart-track { height: 10px; overflow: hidden; border-radius: var(--radius-pill); background: var(--blue-soft); }
+.chart-track i { width: var(--value); min-width: 7px; height: 100%; display: block; border-radius: inherit; background: var(--blue); transition: width var(--motion-slow) var(--ease); }
+.chart-track-fresh { background: var(--fresh-soft); }
+.chart-track-fresh i { background: var(--fresh); }
+.chart-empty { margin: 0; color: var(--muted); font-size: .85rem; line-height: 1.5; }
+.profile-trend-chart { padding: 17px 14px 14px; }
+.trend-legend { display: flex; gap: 13px; margin: 0 4px 15px; color: var(--muted); font-size: .74rem; font-weight: 700; }
+.trend-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.trend-legend i, .trend-legend b { width: 8px; height: 8px; display: block; border-radius: 50%; background: var(--blue); }
+.trend-legend b { background: var(--berry); }
+.profile-trend-bars { height: 154px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; align-items: end; }
+.profile-trend-column { min-width: 0; height: 100%; display: grid; grid-template-rows: 1fr auto; gap: 7px; align-items: end; }
+.profile-trend-stack { height: 100%; display: flex; align-items: end; justify-content: center; gap: 2px; }
+.profile-trend-stack i, .profile-trend-stack b { width: min(9px, 44%); min-height: 3px; height: var(--value); display: block; border-radius: 6px 6px 3px 3px; background: var(--blue); transition: height var(--motion-slow) var(--ease); }
+.profile-trend-stack b { background: var(--berry); }
+.profile-trend-column > span { overflow: hidden; color: var(--muted); font-size: .58rem; font-weight: 700; text-align: center; text-overflow: clip; white-space: nowrap; }
+.flavor-cloud { min-height: 92px; display: flex; flex-wrap: wrap; align-content: flex-start; gap: 8px; padding: 17px; }
+.flavor-cloud-tag { min-height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--radius-pill); background: var(--accent-soft); color: #9a5b06; font-size: clamp(.74rem, calc(.7rem + var(--weight) * .004rem), .92rem); font-weight: 800; }
+.flavor-cloud-tag:nth-child(3n + 2) { background: var(--fresh-soft); color: #197754; }
+.flavor-cloud-tag:nth-child(3n) { background: var(--berry-soft); color: #b44c61; }
+.flavor-cloud-tag b { font-size: .7rem; }
+.spending-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.spending-card { min-height: 121px; display: flex; flex-direction: column; justify-content: space-between; padding: 17px; }
+.spending-card strong { overflow-wrap: anywhere; font-size: 1.25rem; letter-spacing: -.04em; line-height: 1.15; }
+.profile-recent-section { margin-bottom: 8px; }
+
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 640px) {
   .app-header { padding-right: 28px; padding-left: 28px; }

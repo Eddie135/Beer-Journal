@@ -178,6 +178,26 @@ def personal_data(request):
         "average_plato": active_beers.aggregate(value=Avg("plato"))["value"],
         "average_price": active_tastings.aggregate(value=Avg("price_amount"))["value"],
     }
+    experience_profile = active_beers.aggregate(
+        mouthfeel_score=Avg("mouthfeel_score"),
+        bitterness_score=Avg("bitterness_score"),
+        flavor_complexity_score=Avg("flavor_complexity_score"),
+    )
+    experience_scores = []
+    for key, label, start_label, end_label in (
+        ("mouthfeel_score", "口感", "清爽", "醇厚"),
+        ("bitterness_score", "苦度", "淡", "苦"),
+        ("flavor_complexity_score", "风味复杂度", "简单", "复杂"),
+    ):
+        score = experience_profile[key]
+        rounded_score = max(1, min(5, round(float(score)))) if score is not None else None
+        experience_scores.append({
+            "label": label,
+            "start_label": start_label,
+            "end_label": end_label,
+            "score": score,
+            "stars": "★" * rounded_score + "☆" * (5 - rounded_score) if rounded_score else "—",
+        })
     preferences = {
         "category": (
             active_tastings.exclude(beer__style__category__isnull=True)
@@ -212,6 +232,46 @@ def personal_data(request):
         ),
     }
 
+    def chart_items(queryset, total_count, limit=6):
+        items = list(queryset[:limit])
+        for item in items:
+            item["percentage"] = round((item["count"] / total_count * 100), 1) if total_count else 0
+        return items
+
+    country_distribution = chart_items(
+        active_tastings.exclude(beer__origin_country_code="")
+        .values("beer__origin_country_code")
+        .annotate(count=Count("id"))
+        .order_by("-count", "beer__origin_country_code"),
+        core_stats["tasting_count"],
+    )
+    category_distribution = chart_items(
+        active_tastings.exclude(beer__style__category__isnull=True)
+        .values("beer__style__category__name")
+        .annotate(count=Count("id"))
+        .order_by("-count", "beer__style__category__name"),
+        core_stats["tasting_count"],
+    )
+    flavor_distribution = chart_items(
+        FlavorTag.objects.filter(
+            beer_links__beer__deleted_at__isnull=True,
+            beer_links__beer__tastings__deleted_at__isnull=True,
+        )
+        .values("name")
+        .annotate(count=Count("beer_links__beer__tastings", distinct=True))
+        .order_by("-count", "name"),
+        core_stats["tasting_count"],
+    )
+    purchase_channel = (
+        active_tastings.exclude(purchase_channel="")
+        .values("purchase_channel")
+        .annotate(count=Count("id"))
+        .order_by("-count", "purchase_channel")
+        .first()
+    )
+    if purchase_channel:
+        purchase_channel["label"] = dict(Tasting.PURCHASE_CHANNEL_CHOICES)[purchase_channel["purchase_channel"]]
+
     today = timezone.localdate()
     month_starts = []
     year, month = today.year, today.month
@@ -242,6 +302,13 @@ def personal_data(request):
         }
         for month_start in month_starts
     ]
+    monthly_trend_max = max(
+        (max(item["tasting_count"], item["beer_count"]) for item in monthly_trends),
+        default=0,
+    )
+    for trend in monthly_trends:
+        trend["tasting_percentage"] = round((trend["tasting_count"] / monthly_trend_max * 100), 1) if monthly_trend_max else 0
+        trend["beer_percentage"] = round((trend["beer_count"] / monthly_trend_max * 100), 1) if monthly_trend_max else 0
     recent_tastings = (
         active_tastings.select_related("beer", "beer__style", "beer__style__category")
         .prefetch_related("photos")
@@ -249,7 +316,12 @@ def personal_data(request):
     )
     return render(request, "personal_data.html", {
         "core_stats": core_stats,
+        "experience_scores": experience_scores,
         "preferences": preferences,
+        "country_distribution": country_distribution,
+        "category_distribution": category_distribution,
+        "flavor_distribution": flavor_distribution,
+        "purchase_channel": purchase_channel,
         "monthly_trends": monthly_trends,
         "recent_tastings": recent_tastings,
     })
