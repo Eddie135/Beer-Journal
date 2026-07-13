@@ -1,5 +1,5 @@
 from decimal import Decimal, InvalidOperation
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from django.conf import settings
@@ -126,13 +126,38 @@ def beer_list(request):
 
 
 def tasting_list(request):
+    period = request.GET.get("period", "all")
+    if period not in {"all", "recent", "year", "history"}:
+        period = "all"
+
+    active_tastings = Tasting.objects.filter(deleted_at__isnull=True, beer__deleted_at__isnull=True)
+    today = timezone.localdate()
+    year_start = timezone.make_aware(datetime(today.year, 1, 1))
+    recent_cutoff = timezone.now() - timedelta(days=30)
+    journal_stats = active_tastings.aggregate(
+        total_count=Count("id"),
+        average_score=Avg("overall_score"),
+    )
+    journal_stats["year_count"] = active_tastings.filter(tasted_at__gte=year_start).count()
+
     tastings = (
-        Tasting.objects.filter(deleted_at__isnull=True, beer__deleted_at__isnull=True)
+        active_tastings
         .select_related("beer", "beer__style", "beer__style__category")
         .prefetch_related("photos")
         .order_by("-tasted_at", "-created_at")
     )
-    return render(request, "tasting_list.html", {"tastings": tastings})
+    if period == "recent":
+        tastings = tastings.filter(tasted_at__gte=recent_cutoff)
+    elif period == "year":
+        tastings = tastings.filter(tasted_at__gte=year_start)
+    elif period == "history":
+        tastings = tastings.filter(tasted_at__lt=year_start)
+
+    return render(request, "tasting_list.html", {
+        "tastings": tastings,
+        "journal_stats": journal_stats,
+        "period": period,
+    })
 
 
 def start_tasting(request):

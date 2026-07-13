@@ -60,10 +60,10 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_detail_assets(self):
+    def test_base_template_uses_versioned_tasting_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260713-detail")
-        self.assertContains(response, "js/app.js?v=20260713-detail")
+        self.assertContains(response, "css/app.css?v=20260713-tasting")
+        self.assertContains(response, "js/app.js?v=20260713-tasting")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -400,6 +400,10 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertNotContains(tasting_response, "烧烤")
         self.assertNotContains(tasting_response, "多维评分")
         self.assertNotContains(tasting_response, "搭配与场景")
+        self.assertContains(tasting_response, "diary-hero")
+        self.assertContains(tasting_response, "我的笔记")
+        self.assertContains(tasting_response, "330 ml")
+        self.assertContains(tasting_response, "柑橘香气很明显。")
 
     def test_collection_search_filters_and_sorting_use_active_tastings(self):
         lager_category = BeerCategory.objects.create(name="拉格", normalized_name="collection-lager", code="collection-lager")
@@ -539,6 +543,9 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(list_response, "500 ml")
         self.assertContains(list_response, "1.00 瓶")
         self.assertContains(list_response, 'href="/tastings/add/"')
+        self.assertContains(list_response, "journal-hero")
+        self.assertContains(list_response, "journal-entry")
+        self.assertContains(list_response, "最近30天")
 
         selection_response = self.client.get("/tastings/add/")
         self.assertEqual(selection_response.status_code, 200)
@@ -547,6 +554,46 @@ class PublicWorkflowTests(TransactionTestCase):
         response = self.client.post("/tastings/add/", {"beer": str(beer.id)})
         self.assertRedirects(response, f"/beers/{beer.id}/tastings/add/", fetch_redirect_response=False)
         self.assertEqual(Tasting.objects.filter(id=tasting.id).count(), 1)
+
+    def test_tasting_journal_statistics_and_period_filters_exclude_deleted_records(self):
+        year_start = timezone.make_aware(datetime(timezone.localdate().year, 1, 1))
+        recent_beer = Beer.objects.create(name="近期日记啤酒", style=self.style, origin_country_code="DE")
+        current_beer = Beer.objects.create(name="本年日记啤酒", style=self.style, origin_country_code="CN")
+        history_beer = Beer.objects.create(name="历史日记啤酒", style=self.style, origin_country_code="BE")
+        hidden_beer = Beer.objects.create(name="已删除啤酒日记", style=self.style, origin_country_code="US")
+        recent = Tasting.objects.create(beer=recent_beer, tasted_at=timezone.now() - timedelta(days=2), overall_score=Decimal("8.0"))
+        current = Tasting.objects.create(beer=current_beer, tasted_at=year_start + timedelta(days=1), overall_score=Decimal("7.0"))
+        history = Tasting.objects.create(beer=history_beer, tasted_at=year_start - timedelta(days=1), overall_score=Decimal("6.0"))
+        deleted_tasting = Tasting.objects.create(beer=recent_beer, tasted_at=timezone.now(), overall_score=Decimal("10.0"))
+        deleted_tasting.deleted_at = timezone.now()
+        deleted_tasting.save(update_fields=["deleted_at", "updated_at"])
+        Tasting.objects.create(beer=hidden_beer, tasted_at=timezone.now(), overall_score=Decimal("10.0"))
+        hidden_beer.deleted_at = timezone.now()
+        hidden_beer.save(update_fields=["deleted_at", "updated_at"])
+
+        response = self.client.get("/tastings/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["journal_stats"]["total_count"], 3)
+        self.assertEqual(response.context["journal_stats"]["year_count"], 2)
+        self.assertEqual(response.context["journal_stats"]["average_score"], Decimal("7.0"))
+        self.assertContains(response, recent.beer.name)
+        self.assertContains(response, current.beer.name)
+        self.assertContains(response, history.beer.name)
+        self.assertNotContains(response, hidden_beer.name)
+
+        recent_response = self.client.get("/tastings/", {"period": "recent"})
+        self.assertContains(recent_response, recent.beer.name)
+        self.assertNotContains(recent_response, history.beer.name)
+        self.assertContains(recent_response, 'journal-chip is-active')
+
+        year_response = self.client.get("/tastings/", {"period": "year"})
+        self.assertContains(year_response, recent.beer.name)
+        self.assertContains(year_response, current.beer.name)
+        self.assertNotContains(year_response, history.beer.name)
+
+        history_response = self.client.get("/tastings/", {"period": "history"})
+        self.assertContains(history_response, history.beer.name)
+        self.assertNotContains(history_response, recent.beer.name)
 
     def test_daily_tasting_creates_for_existing_beer_with_photo(self):
         beer = Beer.objects.create(name="日常记录啤酒", style=self.style, origin_country_code="CN")

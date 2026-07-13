@@ -1,7 +1,49 @@
 {% extends "base.html" %}
-{% block title %}品饮记录 · BEER JOURNAL{% endblock %}
+{% load beer_extras %}
+{% block title %}饮酒日记 · BEER JOURNAL{% endblock %}
 {% block content %}
-  <div class="page-heading"><div><p class="eyebrow"><a href="{% url 'beer-detail' tasting.beer.id %}">{{ tasting.beer.name }}</a></p><h1>品饮记录</h1></div><div class="action-links"><a class="button" href="{% url 'tasting-edit' tasting.id %}">编辑品饮</a><form method="post" action="{% url 'tasting-delete' tasting.id %}">{% csrf_token %}<button class="button button-danger" type="submit">删除</button></form></div></div>
-  <section class="detail-grid"><article class="panel"><h2>本次信息</h2><dl><dt>时间</dt><dd>{{ tasting.tasted_at|date:"Y年n月j日 H:i" }}</dd><dt>地点</dt><dd>{{ tasting.drinking_location|default:"未填写" }}</dd><dt>价格</dt><dd>{% if tasting.price_amount is not None %}{{ tasting.price_amount }} {{ tasting.currency_code }}{% else %}未填写{% endif %}</dd><dt>总评分</dt><dd>{{ tasting.overall_score|default:"未评分" }}</dd></dl></article><article class="panel"><h2>品饮笔记</h2><p>{{ tasting.notes|default:"未填写笔记。"|linebreaksbr }}</p></article></section>
-  <section class="panel"><h2>照片</h2><div class="photo-grid">{% for photo in tasting.photos.all %}<a href="{% url 'photo-file' photo.id 'display' %}"><img src="{% url 'photo-file' photo.id 'thumbnail' %}" alt="{{ tasting.beer.name }} 照片"></a>{% empty %}<p class="muted">暂无照片。</p>{% endfor %}</div></section>
+  <section class="diary-hero app-card">
+    <div class="diary-hero-media">
+      {% with photo=tasting.photos.first %}
+        {% if photo %}
+          <img class="diary-hero-image progressive-image" src="{% url 'photo-file' photo.id 'display' %}" alt="{{ tasting.beer.name }} 照片">
+        {% else %}
+          <div class="diary-hero-placeholder"><span>◌</span><small>这次没有照片</small></div>
+        {% endif %}
+      {% endwith %}
+      <span class="diary-score">{% if tasting.overall_score is not None %}★ {{ tasting.overall_score }}{% else %}未评分{% endif %}</span>
+    </div>
+    <div class="diary-hero-copy">
+      <p class="screen-kicker">{{ tasting.tasted_at|date:"Y年n月j日 H:i" }}</p>
+      <h1>{{ tasting.beer.name }}</h1>
+      <p class="diary-beer-meta">{{ tasting.beer.origin_country_code|flag }} {{ tasting.beer.origin_country_code|country_name }} · {{ tasting.beer.style.category.name|default:"未分类" }} · {{ tasting.beer.style|default:"未填写类型" }}</p>
+      <div class="diary-actions"><a href="{% url 'beer-detail' tasting.beer.id %}">查看啤酒档案</a><a href="{% url 'tasting-edit' tasting.id %}">编辑记录</a><form method="post" action="{% url 'tasting-delete' tasting.id %}">{% csrf_token %}<button type="submit">删除</button></form></div>
+    </div>
+  </section>
+
+  <section class="diary-section">
+    <div class="section-heading"><h2>我的笔记</h2></div>
+    <article class="diary-note-card app-card"><p>{{ tasting.notes|default:"这一次还没有留下文字记录。"|linebreaksbr }}</p></article>
+  </section>
+
+  <section class="diary-section">
+    <div class="section-heading"><h2>本次饮用</h2></div>
+    <article class="diary-info-card app-card">
+      <dl>
+        <dt>饮用时间</dt><dd>{{ tasting.tasted_at|date:"Y年n月j日 H:i" }}</dd>
+        <dt>地点</dt><dd>{{ tasting.drinking_location|default:"未填写" }}</dd>
+        <dt>容量</dt><dd>{% if tasting.capacity %}{{ tasting.capacity }} ml{% else %}未填写{% endif %}</dd>
+        <dt>瓶数</dt><dd>{% if tasting.bottle_count %}{{ tasting.bottle_count }} 瓶{% else %}未填写{% endif %}</dd>
+        <dt>购买渠道</dt><dd>{{ tasting.get_purchase_channel_display|default:"未填写" }}</dd>
+        <dt>价格</dt><dd>{% if tasting.price_amount is not None %}{{ tasting.price_amount }} {{ tasting.currency_code }}{% else %}未填写{% endif %}</dd>
+      </dl>
+    </article>
+  </section>
+
+  {% if tasting.photos.all|length > 1 %}
+    <section class="diary-section diary-gallery-section">
+      <div class="section-heading"><h2>更多照片</h2></div>
+      <div class="photo-grid">{% for photo in tasting.photos.all|slice:"1:" %}<a href="{% url 'photo-file' photo.id 'display' %}"><img class="progressive-image" src="{% url 'photo-file' photo.id 'thumbnail' %}" alt="{{ tasting.beer.name }} 照片"></a>{% endfor %}</div>
+    </section>
+  {% endif %}
 {% endblock %}
