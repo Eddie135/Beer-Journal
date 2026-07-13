@@ -252,6 +252,13 @@ def personal_data(request):
         .order_by("-count", "beer__style__category__name"),
         core_stats["tasting_count"],
     )
+    style_distribution = chart_items(
+        active_tastings.exclude(beer__style__isnull=True)
+        .values("beer__style__name")
+        .annotate(count=Count("id"))
+        .order_by("-count", "beer__style__name"),
+        core_stats["tasting_count"],
+    )
     flavor_distribution = chart_items(
         FlavorTag.objects.filter(
             beer_links__beer__deleted_at__isnull=True,
@@ -320,6 +327,7 @@ def personal_data(request):
         "preferences": preferences,
         "country_distribution": country_distribution,
         "category_distribution": category_distribution,
+        "style_distribution": style_distribution,
         "flavor_distribution": flavor_distribution,
         "purchase_channel": purchase_channel,
         "monthly_trends": monthly_trends,

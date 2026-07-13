@@ -12,7 +12,7 @@
       {% for beer in beers %}
         <label class="beer-picker-card app-card" data-beer-picker-item data-search-text="{{ beer.name|lower }}">
           <input type="radio" name="beer" value="{{ beer.id }}" required>
-          <span class="picker-copy"><strong>{{ beer.name }}</strong><small>{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }} · {{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</small></span><span class="picker-check">✓</span>
+          <span class="picker-radio" aria-hidden="true"></span><span class="picker-copy"><strong>{{ beer.name }}</strong><em>{{ beer.brand|default:"未填写品牌" }}</em><small>{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }} · {{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</small></span>
         </label>
       {% empty %}
         <p class="muted">还没有可选的啤酒。</p>

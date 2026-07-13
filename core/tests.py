@@ -55,15 +55,25 @@ class HealthPageTests(TestCase):
         self.assertIn("--motion-slow: 300ms", stylesheet)
         self.assertIn("bottom-tab-bar", stylesheet)
         self.assertIn("safe-area-inset-bottom", stylesheet)
-        self.assertIn("164px", stylesheet)
+        self.assertIn("176px", stylesheet)
         self.assertIn("height: 52px", stylesheet)
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_profile_assets(self):
+    def test_base_template_uses_versioned_mobile_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260713-profile")
-        self.assertContains(response, "js/app.js?v=20260713-profile")
+        self.assertContains(response, "css/app.css?v=20260713-mobile")
+        self.assertContains(response, "js/app.js?v=20260713-mobile")
+
+    def test_mobile_layout_components_use_svg_buttons_and_safe_content_spacing(self):
+        stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")
+        self.assertIn(".ui-icon", stylesheet)
+        self.assertIn(".filter-trigger-arrow", stylesheet)
+        self.assertIn(".profile-action-danger", stylesheet)
+        self.assertIn(".beer-picker-card", stylesheet)
+        self.assertIn(".collection-grid { padding-bottom: 12px", stylesheet)
+        self.assertContains(self.client.get("/beers/"), "filter-trigger-arrow")
+        self.assertContains(self.client.get("/beers/"), '<svg class="ui-icon"')
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -395,6 +405,8 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(beer_response, "330 ml")
         self.assertContains(beer_response, "柑橘香气很明显。")
         self.assertContains(beer_response, "detail-primary-action")
+        self.assertContains(beer_response, "profile-action-secondary")
+        self.assertContains(beer_response, "profile-action-danger")
         tasting_response = self.client.get(f"/tastings/{tasting.id}/")
         self.assertEqual(tasting_response.status_code, 200)
         self.assertNotContains(tasting_response, "烧烤")
@@ -525,6 +537,7 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(response.context["country_distribution"][0]["beer__origin_country_code"], "DE")
         self.assertEqual(response.context["country_distribution"][0]["count"], 2)
         self.assertEqual(response.context["category_distribution"][0]["count"], 2)
+        self.assertEqual(response.context["style_distribution"][0]["beer__style__name"], "IPA")
         self.assertEqual(response.context["flavor_distribution"][0]["name"], "数据柑橘")
         self.assertEqual(response.context["purchase_channel"]["label"], "线上")
         self.assertEqual([item["tasting_count"] for item in response.context["monthly_trends"]][-1], 2)
@@ -536,11 +549,13 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(response, "我的口味画像")
         self.assertContains(response, "国家分布")
         self.assertContains(response, "类型分布")
+        self.assertContains(response, "风格分布")
         self.assertContains(response, "花费习惯")
         self.assertEqual(content.count('class="profile-trend-column"'), 12)
 
     def test_tasting_timeline_and_beer_selection_search_are_available(self):
-        beer = Beer.objects.create(name="搜索用 IPA", style=self.style, origin_country_code="DE")
+        brand = Brand.objects.create(name="选择页品牌", normalized_name="selection-brand")
+        beer = Beer.objects.create(name="Weihenstephaner Hefeweissbier", brand=brand, style=self.style, origin_country_code="DE")
         tasting = Tasting.objects.create(
             beer=beer,
             tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)),
@@ -550,7 +565,7 @@ class PublicWorkflowTests(TransactionTestCase):
             notes="柑橘与松脂的余味很干净。",
         )
         list_response = self.client.get("/tastings/")
-        self.assertContains(list_response, "搜索用 IPA")
+        self.assertContains(list_response, "Weihenstephaner Hefeweissbier")
         self.assertContains(list_response, "500 ml")
         self.assertContains(list_response, "1.00 瓶")
         self.assertContains(list_response, 'href="/tastings/add/"')
@@ -562,6 +577,8 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertEqual(selection_response.status_code, 200)
         self.assertContains(selection_response, "data-beer-search")
         self.assertContains(selection_response, beer.name)
+        self.assertContains(selection_response, "picker-radio")
+        self.assertContains(selection_response, brand.name)
         response = self.client.post("/tastings/add/", {"beer": str(beer.id)})
         self.assertRedirects(response, f"/beers/{beer.id}/tastings/add/", fetch_redirect_response=False)
         self.assertEqual(Tasting.objects.filter(id=tasting.id).count(), 1)

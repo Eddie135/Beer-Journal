@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}BEER JOURNAL{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-profile">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-mobile">
 </head>
 <body>
   <header class="app-header">
@@ -15,10 +15,10 @@
     {% block content %}{% endblock %}
   </main>
   <nav class="bottom-tab-bar" aria-label="主要导航">
-    <a class="tab-item{% if request.resolver_match.url_name == 'beer-list' or request.resolver_match.url_name == 'beer-detail' %} is-active{% endif %}" href="{% url 'beer-list' %}"><span class="tab-icon">◒</span><span>我的啤酒</span></a>
-    <a class="tab-item{% if request.resolver_match.url_name == 'tasting-list' or request.resolver_match.url_name == 'tasting-detail' %} is-active{% endif %}" href="{% url 'tasting-list' %}"><span class="tab-icon">◷</span><span>饮用记录</span></a>
-    <a class="tab-item{% if request.resolver_match.url_name == 'personal-data' %} is-active{% endif %}" href="{% url 'personal-data' %}"><span class="tab-icon">◌</span><span>个人数据</span></a>
+    <a class="tab-item{% if request.resolver_match.url_name == 'beer-list' or request.resolver_match.url_name == 'beer-detail' %} is-active{% endif %}" href="{% url 'beer-list' %}"><span class="tab-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16l-6-3-6 3z"></path></svg></span><span>我的啤酒</span></a>
+    <a class="tab-item{% if request.resolver_match.url_name == 'tasting-list' or request.resolver_match.url_name == 'tasting-detail' %} is-active{% endif %}" href="{% url 'tasting-list' %}"><span class="tab-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></span><span>饮用记录</span></a>
+    <a class="tab-item{% if request.resolver_match.url_name == 'personal-data' %} is-active{% endif %}" href="{% url 'personal-data' %}"><span class="tab-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9M12 19V5M19 19v-7"></path></svg></span><span>个人数据</span></a>
   </nav>
-  <script defer src="{% static 'js/app.js' %}?v=20260713-profile"></script>
+  <script defer src="{% static 'js/app.js' %}?v=20260713-mobile"></script>
 </body>
 </html>

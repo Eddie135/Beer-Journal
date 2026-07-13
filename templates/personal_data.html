@@ -41,6 +41,11 @@
   </section>
 
   <section class="profile-section">
+    <div class="section-heading"><h2>风格分布</h2><span>按品饮次数</span></div>
+    <article class="profile-chart app-card">{% for item in style_distribution %}<div class="chart-bar-row"><span>{{ item.beer__style__name }}</span><div class="chart-track chart-track-purple"><i style="--value: {{ item.percentage }}%"></i></div><b>{{ item.count }}</b></div>{% empty %}<p class="chart-empty">尚无可统计的风格资料。</p>{% endfor %}</article>
+  </section>
+
+  <section class="profile-section">
     <div class="section-heading"><h2>近12个月</h2><span>品饮 / 新收藏</span></div>
     <article class="profile-trend-chart app-card"><div class="trend-legend"><span><i></i>品饮</span><span><b></b>收藏</span></div><div class="profile-trend-bars">{% for trend in monthly_trends %}<div class="profile-trend-column" title="{{ trend.month|date:'Y年n月' }}：{{ trend.tasting_count }} 次品饮，{{ trend.beer_count }} 款收藏"><div class="profile-trend-stack"><i style="--value: {{ trend.tasting_percentage }}%"></i><b style="--value: {{ trend.beer_percentage }}%"></b></div><span>{{ trend.month|date:"n月" }}</span></div>{% endfor %}</div></article>
   </section>

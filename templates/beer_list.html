@@ -13,9 +13,9 @@
 
   <section class="collection-tools" aria-label="搜索与筛选">
     <form class="collection-search" method="get">
-      <label class="visually-hidden" for="beer-query">搜索啤酒</label><span class="search-glyph" aria-hidden="true">⌕</span><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索啤酒、品牌、国家"><button type="submit" aria-label="搜索">搜索</button>
+      <label class="visually-hidden" for="beer-query">搜索啤酒</label><span class="search-glyph" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg></span><input id="beer-query" type="search" name="q" value="{{ filters.q }}" placeholder="搜索啤酒、品牌、国家"><button type="submit" aria-label="搜索"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6"></circle><path d="m16 16 4 4"></path></svg></button>
     </form>
-    <button class="filter-trigger filter-chip" type="button" data-filter-open><span>筛选与排序</span>{% if filters.category or filters.style or filters.country or filters.mouthfeel or filters.tag or filters.min_score or filters.max_score or filters.sort != "latest" %}<b>已选</b>{% endif %}<span aria-hidden="true">⌄</span></button>
+    <button class="filter-trigger" type="button" data-filter-open><span class="filter-trigger-copy"><strong>筛选与排序</strong>{% if filters.category or filters.style or filters.country or filters.mouthfeel or filters.tag or filters.min_score or filters.max_score or filters.sort != "latest" %}<small>已应用筛选条件</small>{% endif %}</span><span class="filter-trigger-arrow" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg></span></button>
   </section>
 
   <div class="filter-overlay" data-filter-overlay></div>

@@ -81,7 +81,7 @@ class BeerSelectionForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["beer"].queryset = (
             Beer.objects.filter(deleted_at__isnull=True)
-            .select_related("style", "style__category")
+            .select_related("brand", "style", "style__category")
             .order_by("name", "id")
         )
 
