@@ -107,6 +107,12 @@ class Beer(SoftDeletableModel):
     plato = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(Decimal("0.00"))])
     MOUTHFEEL_CHOICES = (("crisp", "清爽"), ("balanced", "适中"), ("full", "醇厚"))
     mouthfeel_profile = models.CharField(max_length=20, choices=MOUTHFEEL_CHOICES, blank=True)
+    MOUTHFEEL_SCORE_CHOICES = ((1, "清爽"), (2, "偏清爽"), (3, "平衡"), (4, "偏醇厚"), (5, "醇厚"))
+    BITTERNESS_SCORE_CHOICES = ((1, "淡"), (2, "微苦"), (3, "平衡"), (4, "偏苦"), (5, "苦"))
+    FLAVOR_COMPLEXITY_SCORE_CHOICES = ((1, "简单"), (2, "较简单"), (3, "平衡"), (4, "较复杂"), (5, "复杂"))
+    mouthfeel_score = models.PositiveSmallIntegerField(null=True, blank=True, choices=MOUTHFEEL_SCORE_CHOICES)
+    bitterness_score = models.PositiveSmallIntegerField(null=True, blank=True, choices=BITTERNESS_SCORE_CHOICES)
+    flavor_complexity_score = models.PositiveSmallIntegerField(null=True, blank=True, choices=FLAVOR_COMPLEXITY_SCORE_CHOICES)
     catalog_notes = models.TextField(blank=True)
 
     class Meta:
@@ -116,11 +122,30 @@ class Beer(SoftDeletableModel):
             models.CheckConstraint(condition=Q(abv__isnull=True) | Q(abv__gte=0, abv__lte=100), name="beer_abv_range"),
             models.CheckConstraint(condition=Q(ibu__isnull=True) | Q(ibu__gte=0), name="beer_ibu_non_negative"),
             models.CheckConstraint(condition=Q(color_ebc__isnull=True) | Q(color_ebc__gte=0), name="beer_color_ebc_non_negative"),
+            models.CheckConstraint(condition=Q(mouthfeel_score__isnull=True) | Q(mouthfeel_score__gte=1, mouthfeel_score__lte=5), name="beer_mouthfeel_score_range"),
+            models.CheckConstraint(condition=Q(bitterness_score__isnull=True) | Q(bitterness_score__gte=1, bitterness_score__lte=5), name="beer_bitterness_score_range"),
+            models.CheckConstraint(condition=Q(flavor_complexity_score__isnull=True) | Q(flavor_complexity_score__gte=1, flavor_complexity_score__lte=5), name="beer_flavor_complexity_score_range"),
         ]
         indexes = [models.Index(fields=["origin_country_code"]), models.Index(fields=["style"])]
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def _star_display(score):
+        return "" if score is None else "★" * score + "☆" * (5 - score)
+
+    @property
+    def mouthfeel_stars(self):
+        return self._star_display(self.mouthfeel_score)
+
+    @property
+    def bitterness_stars(self):
+        return self._star_display(self.bitterness_score)
+
+    @property
+    def flavor_complexity_stars(self):
+        return self._star_display(self.flavor_complexity_score)
 
 
 class Tasting(SoftDeletableModel):

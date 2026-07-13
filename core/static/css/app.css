@@ -281,6 +281,29 @@ dd { margin: 0; }
 .collection-tag-list .tag-roast { background: #eee7e3; color: #725446; }
 .collection-tasting-count { margin: 15px 0 0; padding-top: 13px; border-top: 1px solid var(--line); color: var(--muted); font-size: .82rem; font-weight: 750; }
 
+/* Beer long-term experience scores */
+.star-score-field { padding: 14px; border-radius: 18px; background: #fbfaf7; }
+.score-field-label { color: var(--ink); font-size: .9rem; font-weight: 800; }
+.score-selector { display: grid; grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 8px; align-items: center; }
+.score-end { color: var(--muted); font-size: .72rem; font-weight: 700; text-align: center; }
+.star-radio ul { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 0; padding: 0; list-style: none; }
+.star-radio li { margin: 0; min-width: 0; }
+.star-radio label { min-height: 38px; display: grid; place-items: center; padding: 4px 2px; border-radius: 11px; background: var(--surface); color: #b67010; font-size: .78rem; font-weight: 800; cursor: pointer; }
+.star-radio li:first-child label { color: var(--muted); font-size: .64rem; }
+.star-radio input { position: absolute; opacity: 0; pointer-events: none; }
+.star-radio input:checked + label, .star-radio label:has(input:checked) { background: var(--accent-soft); box-shadow: inset 0 0 0 1px rgba(244, 163, 64, .42); }
+.star-radio label:has(input:focus-visible) { outline: 2px solid var(--blue); outline-offset: 2px; }
+.experience-panel { grid-column: 1 / -1; }
+.experience-list { display: grid; gap: 12px; }
+.experience-score { display: grid; grid-template-columns: minmax(72px, 1fr) auto 32px; gap: 10px; align-items: center; min-height: 46px; padding: 10px 11px; border-radius: 16px; background: var(--surface-soft); }
+.experience-score div { display: grid; gap: 2px; }
+.experience-score strong { font-size: .86rem; }
+.experience-score small { color: var(--muted); font-size: .7rem; font-weight: 700; }
+.experience-score > b { color: #b67010; font-size: 1rem; letter-spacing: .02em; white-space: nowrap; }
+.experience-score > small { text-align: right; }
+.collection-experience { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+.collection-experience span { min-height: 25px; display: inline-flex; align-items: center; padding: 4px 8px; border-radius: var(--radius-pill); background: var(--surface-soft); color: #9a5b06; font-size: .67rem; font-weight: 800; letter-spacing: .01em; }
+
 @keyframes page-enter { from { opacity: 0; } to { opacity: 1; } }
 @media (min-width: 640px) {
   .app-header { padding-right: 28px; padding-left: 28px; }

@@ -75,7 +75,16 @@ def beer_list(request):
     if filters["country"]:
         beers = beers.filter(origin_country_code=filters["country"])
     if filters["mouthfeel"]:
-        beers = beers.filter(mouthfeel_profile=filters["mouthfeel"])
+        legacy_mouthfeel_scores = {"crisp": 1, "light": 2, "balanced": 3, "medium": 3, "full": 5}
+        legacy_value = filters["mouthfeel"]
+        if legacy_value in legacy_mouthfeel_scores:
+            score = legacy_mouthfeel_scores[legacy_value]
+            beers = beers.filter(Q(mouthfeel_score=score) | Q(mouthfeel_score__isnull=True, mouthfeel_profile=legacy_value))
+            filters["mouthfeel"] = str(score)
+        elif legacy_value in {"1", "2", "3", "4", "5"}:
+            beers = beers.filter(mouthfeel_score=int(legacy_value))
+        else:
+            filters["mouthfeel"] = ""
     if filters["tag"]:
         beers = beers.filter(flavor_tag_links__tag_id=filters["tag"])
     if filters["min_score"]:
@@ -112,7 +121,7 @@ def beer_list(request):
         "styles": BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category"),
         "flavor_tags": FlavorTag.objects.all(),
         "countries": COUNTRIES,
-        "mouthfeel_choices": Beer.MOUTHFEEL_CHOICES,
+        "mouthfeel_choices": Beer.MOUTHFEEL_SCORE_CHOICES,
     })
 
 

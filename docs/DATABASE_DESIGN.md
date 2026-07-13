@@ -107,10 +107,13 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 | `origin_region` | VARCHAR(120) | 可空 | 州、省、城市或产区 |
 | `style_id` | UUID | 可空、外键 | 关联 `beer_styles` |
 | `abv` | NUMERIC(5,2) | 可空 | 酒精度百分比，例如 6.50 |
-| `ibu` | NUMERIC(6,2) | 可空 | 苦度 IBU；未知为 NULL |
+| `ibu` | NUMERIC(6,2) | 可空、历史兼容 | 苦度 IBU；保留原值，但不在日常 UI 展示或编辑，不能据此自动推导主观苦度星级 |
 | `color_ebc` | NUMERIC(6,2) | 可空 | 颜色的 EBC 数值；展示层可换算 SRM |
 | `plato` | NUMERIC(5,2) | 可空 | 麦汁浓度（°P）；未知为 NULL |
-| `mouthfeel_profile` | VARCHAR(20) | 可空、受限枚举 | 清爽、适中、醇厚；描述该款 Beer 的典型口感，不替代某次品饮笔记 |
+| `mouthfeel_profile` | VARCHAR(20) | 可空、历史兼容 | 旧版口感档案；保留原值，不在日常 UI 展示或编辑 |
+| `mouthfeel_score` | SMALLINT | 可空、1–5 | 长期主观口感：1 清爽、3 平衡、5 醇厚 |
+| `bitterness_score` | SMALLINT | 可空、1–5 | 长期主观苦度：1 淡、3 平衡、5 苦；不由 IBU 自动换算 |
+| `flavor_complexity_score` | SMALLINT | 可空、1–5 | 长期主观风味复杂度：1 简单、3 平衡、5 复杂 |
 | `catalog_notes` | TEXT | 可空 | 与某次品饮无关的基本说明 |
 | `created_at` | TIMESTAMPTZ | 必填 | 创建时间 |
 | `updated_at` | TIMESTAMPTZ | 必填 | 更新时间 |
@@ -123,7 +126,8 @@ Tasting N ─── M TastingTag（食物搭配、饮用场景等）
 - 国家代码为空或为两个大写英文字母。
 - `style_id`、`brand_id`、`brewery_id` 使用限制删除；被引用的实体不能静默删除。
 - `abv` 为空或位于 0.00–100.00；`ibu`、`color_ebc`、`plato` 为空或大于等于 0。
-- `mouthfeel_profile` 只能为 `crisp`、`balanced`、`full` 三个稳定内部值，界面分别显示清爽、适中、醇厚。
+- 三项长期体验评分为空或介于 1–5 的整数；它们属于 Beer，不替代 Tasting 的总体评分或风味标签。
+- `mouthfeel_profile` 只为历史兼容保留；迁移时 `crisp`、`light` 映射为口感 1、2，`balanced`、`medium` 映射为 3，`full` 映射为 5，但不会覆盖已经填写的新评分。
 - 不对“名称 + 品牌 + 酒厂”设置强唯一约束。年份、批次和同名酒可能合法存在，应用只做疑似重复提示。
 - 容量和价格不得放进本表，因为同一款酒可能以不同包装和价格饮用。
 
@@ -394,6 +398,7 @@ Beer 和首次 Tasting 必须在同一数据库事务中写入。任何必填、
 - `0002` 创建 `beer_categories`，增加 BeerStyle 分类外键、Beer 的 `plato`/`mouthfeel_profile`、Tasting 的 `bottle_count`，并将 `volume_ml` 无损重命名为 `capacity`。
 - `0002` 规范化既有风味标签并合并规范化冲突的关系，映射已知购买渠道旧值；不会删除啤酒、品饮、评分或软删除记录。
 - `0003` 补齐拉格/艾尔（稳定代码为 `lager`/`ale`）下的六个规范 BeerStyle；已有非标准历史类型继续保留并归入可用分类，不强行改名。
+- `0005` 新增 Beer 的口感、苦度和风味复杂度 1–5 分长期评分；仅从旧 `mouthfeel_profile` 安全映射口感评分，不根据 IBU 生成苦度评分，且不删除旧字段。
 - 新字段未知值保持 `NULL`；迁移反向操作不删除已创建的分类和标签，优先保护数据。
 
 ### JSON

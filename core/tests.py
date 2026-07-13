@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.test.utils import override_settings
 from django.utils import timezone
@@ -60,10 +60,10 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_v3_collection_card_assets(self):
+    def test_base_template_uses_versioned_experience_score_assets(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260712-v3b2")
-        self.assertContains(response, "js/app.js?v=20260712-v3b2")
+        self.assertContains(response, "css/app.css?v=20260713-experience")
+        self.assertContains(response, "js/app.js?v=20260713-experience")
 
     def test_floating_add_buttons_only_appear_on_collection_and_tasting_lists(self):
         self.assertContains(self.client.get("/beers/"), "floating-add-button")
@@ -104,7 +104,9 @@ class CoreModelTests(TestCase):
             ibu=Decimal("45.00"),
             color_ebc=Decimal("12.00"),
             plato=Decimal("15.00"),
-            mouthfeel_profile="balanced",
+            mouthfeel_score=3,
+            bitterness_score=4,
+            flavor_complexity_score=5,
         )
 
     def test_create_beer(self):
@@ -112,7 +114,16 @@ class CoreModelTests(TestCase):
         self.assertEqual(self.beer.style, self.style)
         self.assertEqual(self.beer.abv, Decimal("6.50"))
         self.assertEqual(self.beer.plato, Decimal("15.00"))
-        self.assertEqual(self.beer.mouthfeel_profile, "balanced")
+        self.assertEqual(self.beer.mouthfeel_score, 3)
+        self.assertEqual(self.beer.bitterness_score, 4)
+        self.assertEqual(self.beer.flavor_complexity_score, 5)
+        self.assertEqual(self.beer.mouthfeel_stars, "★★★☆☆")
+
+    def test_experience_scores_are_nullable_but_limited_to_one_through_five(self):
+        self.assertIsNone(Beer.objects.create(name="未评分啤酒", style=self.style).bitterness_score)
+        with transaction.atomic():
+            with self.assertRaises(IntegrityError):
+                Beer.objects.create(name="无效苦度评分", style=self.style, bitterness_score=6)
 
     def test_v2_categories_and_tasting_fields(self):
         tasting = Tasting.objects.create(
@@ -283,9 +294,10 @@ class PublicWorkflowTests(TransactionTestCase):
             "category": str(self.category.id),
             "style": str(self.style.id),
             "abv": "6.50",
-            "ibu": "45.00",
             "plato": "14.50",
-            "mouthfeel_profile": "balanced",
+            "mouthfeel_score": "3",
+            "bitterness_score": "4",
+            "flavor_complexity_score": "5",
             "flavor_tag_input": "柑橘、松脂",
             "tasted_at": "2026-07-15T20:30",
             "drinking_location": "家中",
@@ -301,7 +313,9 @@ class PublicWorkflowTests(TransactionTestCase):
         tasting = beer.tastings.get()
         self.assertEqual(beer.origin_country_code, "DE")
         self.assertEqual(beer.plato, Decimal("14.50"))
-        self.assertEqual(beer.mouthfeel_profile, "balanced")
+        self.assertEqual(beer.mouthfeel_score, 3)
+        self.assertEqual(beer.bitterness_score, 4)
+        self.assertEqual(beer.flavor_complexity_score, 5)
         self.assertEqual(beer.flavor_tag_links.count(), 2)
         self.assertFalse(tasting.rating_values.exists())
         self.assertFalse(tasting.tag_links.exists())
@@ -312,6 +326,10 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertContains(response, "德国")
         self.assertContains(response, 'data-category-select')
         self.assertContains(response, 'data-style-select')
+        self.assertContains(response, 'name="mouthfeel_score"')
+        self.assertContains(response, "清爽")
+        self.assertContains(response, "醇厚")
+        self.assertNotContains(response, "IBU 苦度")
         self.assertNotContains(response, "多维评分")
         self.assertNotContains(response, "食物搭配")
         self.assertNotContains(response, "饮用场景")
@@ -346,7 +364,7 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertFalse(Beer.objects.filter(name="用户流程 IPA").exists())
 
     def test_list_and_detail_pages_show_created_records(self):
-        beer = Beer.objects.create(name="列表测试啤酒", style=self.style, origin_country_code="CN")
+        beer = Beer.objects.create(name="列表测试啤酒", style=self.style, origin_country_code="CN", mouthfeel_score=4, bitterness_score=3, flavor_complexity_score=2)
         tasting = Tasting.objects.create(
             beer=beer,
             tasted_at=timezone.make_aware(datetime(2026, 7, 15, 20, 30)),
@@ -363,6 +381,10 @@ class PublicWorkflowTests(TransactionTestCase):
         beer_response = self.client.get(f"/beers/{beer.id}/")
         self.assertEqual(beer_response.status_code, 200)
         self.assertContains(beer_response, "柑橘")
+        self.assertContains(beer_response, "清爽")
+        self.assertContains(beer_response, "醇厚")
+        self.assertContains(beer_response, "★★★★☆")
+        self.assertNotContains(beer_response, "IBU")
         tasting_response = self.client.get(f"/tastings/{tasting.id}/")
         self.assertEqual(tasting_response.status_code, 200)
         self.assertNotContains(tasting_response, "烧烤")
@@ -376,9 +398,9 @@ class PublicWorkflowTests(TransactionTestCase):
         brewery = Brewery.objects.create(name="收藏酒厂", normalized_name="collection-brewery", country_code="DE", region="")
         citrus = FlavorTag.objects.create(name="柑橘收藏", normalized_name="collection-citrus", category="自定义")
         pine = FlavorTag.objects.create(name="松脂收藏", normalized_name="collection-pine", category="自定义")
-        newest = Beer.objects.create(name="最新 IPA", brand=brand, brewery=brewery, style=self.style, origin_country_code="DE", mouthfeel_profile="crisp")
-        highest = Beer.objects.create(name="最高 皮尔森", style=lager_style, origin_country_code="CN", mouthfeel_profile="full")
-        no_tasting = Beer.objects.create(name="未品饮 小麦", style=self.style, origin_country_code="BE", mouthfeel_profile="balanced")
+        newest = Beer.objects.create(name="最新 IPA", brand=brand, brewery=brewery, style=self.style, origin_country_code="DE", mouthfeel_score=1)
+        highest = Beer.objects.create(name="最高 皮尔森", style=lager_style, origin_country_code="CN", mouthfeel_score=5)
+        no_tasting = Beer.objects.create(name="未品饮 小麦", style=self.style, origin_country_code="BE", mouthfeel_score=3)
         BeerFlavorTag.objects.create(beer=newest, tag=citrus)
         BeerFlavorTag.objects.create(beer=highest, tag=pine)
         Tasting.objects.create(beer=newest, tasted_at=timezone.make_aware(datetime(2026, 7, 18, 20, 30)), overall_score=Decimal("7.5"))
@@ -404,7 +426,7 @@ class PublicWorkflowTests(TransactionTestCase):
             ({"category": str(lager_category.id)}, highest.name, newest.name),
             ({"style": str(self.style.id)}, newest.name, highest.name),
             ({"country": "BE"}, no_tasting.name, newest.name),
-            ({"mouthfeel": "full"}, highest.name, newest.name),
+            ({"mouthfeel": "5"}, highest.name, newest.name),
             ({"tag": str(citrus.id)}, newest.name, highest.name),
             ({"min_score": "9.0"}, highest.name, newest.name),
         ):
@@ -438,7 +460,7 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertNotContains(response, older.name)
 
     def test_collection_card_prioritizes_rating_and_limits_flavor_tags(self):
-        beer = Beer.objects.create(name="精修卡片啤酒", style=self.style, origin_country_code="DE")
+        beer = Beer.objects.create(name="精修卡片啤酒", style=self.style, origin_country_code="DE", mouthfeel_score=4, bitterness_score=2, flavor_complexity_score=3)
         Tasting.objects.create(beer=beer, tasted_at=timezone.now(), overall_score=Decimal("8.5"))
         tags = [
             FlavorTag.objects.create(name=f"标签{i}", normalized_name=f"card-tag-{i}", category=category)
@@ -451,6 +473,7 @@ class PublicWorkflowTests(TransactionTestCase):
         content = response.content.decode()
         collection_html = content.split('<section class="collection-grid">', 1)[1].split('</section>', 1)[0]
         self.assertContains(response, 'class="collection-rating"')
+        self.assertContains(response, 'class="collection-experience"')
         self.assertContains(response, 'class="collection-tasting-count"')
         self.assertEqual(collection_html.count("tag-pill"), 3)
         self.assertIn("标签1", collection_html)
@@ -564,9 +587,10 @@ class PublicWorkflowTests(TransactionTestCase):
                     "category": str(self.category.id),
                     "style": str(self.style.id),
                     "abv": "",
-                    "ibu": "",
                     "plato": "",
-                    "mouthfeel_profile": "",
+                    "mouthfeel_score": "",
+                    "bitterness_score": "",
+                    "flavor_complexity_score": "",
                     "flavor_tag_input": "",
                     "photos": [self._image_upload("beer-edit.png")],
                 },
@@ -632,13 +656,15 @@ class PublicWorkflowTests(TransactionTestCase):
         )
         beer_response = self.client.post(
             f"/beers/{beer.id}/edit/",
-            {"name": "已编辑啤酒", "brand_name": "", "brewery_name": "", "origin_country_code": "CN", "category": str(self.category.id), "style": str(self.style.id), "abv": "5.00", "ibu": "20.00", "plato": "12.50", "mouthfeel_profile": "crisp", "flavor_tag_input": "柑橘、焦糖"},
+            {"name": "已编辑啤酒", "brand_name": "", "brewery_name": "", "origin_country_code": "CN", "category": str(self.category.id), "style": str(self.style.id), "abv": "5.00", "plato": "12.50", "mouthfeel_score": "1", "bitterness_score": "4", "flavor_complexity_score": "5", "flavor_tag_input": "柑橘、焦糖"},
         )
         self.assertEqual(beer_response.status_code, 302)
         beer.refresh_from_db()
         self.assertEqual(beer.name, "已编辑啤酒")
         self.assertEqual(beer.plato, Decimal("12.50"))
-        self.assertEqual(beer.mouthfeel_profile, "crisp")
+        self.assertEqual(beer.mouthfeel_score, 1)
+        self.assertEqual(beer.bitterness_score, 4)
+        self.assertEqual(beer.flavor_complexity_score, 5)
         self.assertEqual(set(beer.flavor_tag_links.values_list("tag__name", flat=True)), {"柑橘", "焦糖"})
         edit_page = self.client.get(f"/tastings/{tasting.id}/edit/")
         self.assertNotContains(edit_page, "多维评分")

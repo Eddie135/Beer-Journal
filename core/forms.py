@@ -58,6 +58,17 @@ class MultipleFileField(forms.FileField):
         return [single_file_clean(item, initial) for item in data]
 
 
+def star_score_field(label, choices):
+    return forms.TypedChoiceField(
+        label=label,
+        required=False,
+        choices=(("", "未填写"),) + choices,
+        coerce=int,
+        empty_value=None,
+        widget=forms.RadioSelect(attrs={"class": "star-score-input"}),
+    )
+
+
 class BeerSelectionForm(forms.Form):
     beer = forms.ModelChoiceField(
         label="选择啤酒",
@@ -117,9 +128,10 @@ class CreateBeerTastingForm(forms.Form):
     category = forms.ModelChoiceField(label="啤酒大类", queryset=BeerCategory.objects.none(), widget=forms.Select(attrs={"data-category-select": ""}))
     style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none(), widget=StyleSelect(attrs={"data-style-select": ""}))
     abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
-    ibu = forms.DecimalField(label="IBU 苦度", max_digits=6, decimal_places=2, required=False, min_value=Decimal("0"))
     plato = forms.DecimalField(label="麦汁浓度 Plato（°P）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"))
-    mouthfeel_profile = forms.ChoiceField(label="口感", required=False, choices=(("", "未填写"),) + Beer.MOUTHFEEL_CHOICES)
+    mouthfeel_score = star_score_field("口感", Beer.MOUTHFEEL_SCORE_CHOICES)
+    bitterness_score = star_score_field("苦度", Beer.BITTERNESS_SCORE_CHOICES)
+    flavor_complexity_score = star_score_field("风味复杂度", Beer.FLAVOR_COMPLEXITY_SCORE_CHOICES)
     flavor_tag_input = forms.CharField(label="风味标签", required=False, help_text="用逗号或顿号分隔，例如：柑橘、松脂、焦糖。")
     tasted_at = forms.DateTimeField(label="品饮时间", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"], initial=timezone.localtime)
     drinking_location = forms.CharField(label="饮用地点", max_length=255, required=False)
@@ -132,7 +144,7 @@ class CreateBeerTastingForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.fields["category"].queryset = BeerCategory.objects.filter(is_active=True, deleted_at__isnull=True)
         self.fields["style"].queryset = BeerStyle.objects.filter(is_active=True, deleted_at__isnull=True).select_related("category")
-        self.beer_fields = [self[name] for name in ("name", "brand_name", "brewery_name", "origin_country_code", "category", "style", "abv", "ibu", "plato", "mouthfeel_profile", "flavor_tag_input")]
+        self.beer_fields = [self[name] for name in ("name", "brand_name", "brewery_name", "origin_country_code", "category", "style", "abv", "plato", "mouthfeel_score", "bitterness_score", "flavor_complexity_score", "flavor_tag_input")]
         self.tasting_fields = [self[name] for name in ("tasted_at", "drinking_location", "price_amount", "overall_score", "notes", "photos")]
 
     @staticmethod
@@ -203,9 +215,10 @@ class CreateBeerTastingForm(forms.Form):
             origin_country_code=data["origin_country_code"],
             style=data["style"],
             abv=data["abv"],
-            ibu=data["ibu"],
             plato=data["plato"],
-            mouthfeel_profile=data["mouthfeel_profile"],
+            mouthfeel_score=data["mouthfeel_score"],
+            bitterness_score=data["bitterness_score"],
+            flavor_complexity_score=data["flavor_complexity_score"],
         )
         for tag in self._get_or_create_flavor_tags(data["flavor_tag_input"]):
             BeerFlavorTag.objects.create(beer=beer, tag=tag)
@@ -228,9 +241,10 @@ class BeerEditForm(forms.Form):
     category = forms.ModelChoiceField(label="啤酒大类", queryset=BeerCategory.objects.none(), widget=forms.Select(attrs={"data-category-select": ""}))
     style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none(), widget=StyleSelect(attrs={"data-style-select": ""}))
     abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
-    ibu = forms.DecimalField(label="IBU 苦度", max_digits=6, decimal_places=2, required=False, min_value=Decimal("0"))
     plato = forms.DecimalField(label="麦汁浓度 Plato（°P）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"))
-    mouthfeel_profile = forms.ChoiceField(label="口感", required=False, choices=(("", "未填写"),) + Beer.MOUTHFEEL_CHOICES)
+    mouthfeel_score = star_score_field("口感", Beer.MOUTHFEEL_SCORE_CHOICES)
+    bitterness_score = star_score_field("苦度", Beer.BITTERNESS_SCORE_CHOICES)
+    flavor_complexity_score = star_score_field("风味复杂度", Beer.FLAVOR_COMPLEXITY_SCORE_CHOICES)
     flavor_tag_input = forms.CharField(label="风味标签", required=False, help_text="用逗号或顿号分隔，例如：柑橘、松脂、焦糖。")
     photos = MultipleFileField(label="新增照片（可多选）", required=False, widget=MultipleFileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}))
 
@@ -248,9 +262,10 @@ class BeerEditForm(forms.Form):
                 "category": beer.style.category if beer.style else None,
                 "style": beer.style,
                 "abv": beer.abv,
-                "ibu": beer.ibu,
                 "plato": beer.plato,
-                "mouthfeel_profile": beer.mouthfeel_profile,
+                "mouthfeel_score": beer.mouthfeel_score,
+                "bitterness_score": beer.bitterness_score,
+                "flavor_complexity_score": beer.flavor_complexity_score,
                 "flavor_tag_input": "、".join(link.tag.name for link in beer.flavor_tag_links.all()),
             })
 
@@ -268,9 +283,10 @@ class BeerEditForm(forms.Form):
         self.beer.origin_country_code = data["origin_country_code"]
         self.beer.style = data["style"]
         self.beer.abv = data["abv"]
-        self.beer.ibu = data["ibu"]
         self.beer.plato = data["plato"]
-        self.beer.mouthfeel_profile = data["mouthfeel_profile"]
+        self.beer.mouthfeel_score = data["mouthfeel_score"]
+        self.beer.bitterness_score = data["bitterness_score"]
+        self.beer.flavor_complexity_score = data["flavor_complexity_score"]
         self.beer.brand = CreateBeerTastingForm._get_or_create_source(Brand, data["brand_name"], data["origin_country_code"])
         self.beer.brewery = CreateBeerTastingForm._get_or_create_source(Brewery, data["brewery_name"], data["origin_country_code"])
         self.beer.save()

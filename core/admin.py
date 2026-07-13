@@ -58,7 +58,7 @@ class BreweryAdmin(admin.ModelAdmin):
 
 @admin.register(Beer)
 class BeerAdmin(admin.ModelAdmin):
-    list_display = ("name", "brand", "brewery", "style", "abv", "ibu", "deleted_at")
+    list_display = ("name", "brand", "brewery", "style", "abv", "deleted_at")
     list_filter = ("style", "origin_country_code", "deleted_at")
     search_fields = ("name", "brand__name", "brewery__name")
     list_select_related = ("brand", "brewery", "style")
@@ -67,7 +67,8 @@ class BeerAdmin(admin.ModelAdmin):
     inlines = (BeerFlavorTagInline,)
     fieldsets = (
         ("基本资料", {"fields": (("name", "style"), ("brand", "brewery"), ("origin_country_code", "origin_region"))}),
-        ("规格", {"fields": (("abv", "ibu", "color_ebc"), "catalog_notes")}),
+        ("规格", {"fields": (("abv", "color_ebc"), "catalog_notes")} ),
+        ("体验评分", {"fields": (("mouthfeel_score", "bitterness_score", "flavor_complexity_score"),)}),
         ("记录状态", {"fields": ("id", "created_at", "updated_at", "deleted_at"), "classes": ("collapse",)}),
     )
 
