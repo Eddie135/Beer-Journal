@@ -52,7 +52,31 @@ const initializeApp = () => {
     closeButton?.addEventListener("click", close);
     overlay?.addEventListener("click", close);
   });
+
+  const installButton = document.querySelector("[data-pwa-install]");
+  let installPrompt;
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    if (installButton) installButton.hidden = false;
+  });
+  installButton?.addEventListener("click", async () => {
+    if (!installPrompt) return;
+    installButton.hidden = true;
+    await installPrompt.prompt();
+    installPrompt = null;
+  });
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    if (installButton) installButton.hidden = true;
+  });
 };
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/service-worker.js", { scope: "/" }).catch(() => {});
+  }, { once: true });
+}
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initializeApp, { once: true });

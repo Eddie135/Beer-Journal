@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 from io import BytesIO
@@ -60,10 +61,41 @@ class HealthPageTests(TestCase):
         self.assertIn("min-height: 52px", stylesheet)
         self.assertIn("@media (prefers-reduced-motion: reduce)", stylesheet)
 
-    def test_base_template_uses_versioned_mobile_assets(self):
+    def test_base_template_includes_versioned_pwa_assets_and_manifest(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260713-mobile")
-        self.assertContains(response, "js/app.js?v=20260713-mobile")
+        self.assertContains(response, "css/app.css?v=20260713-pwa")
+        self.assertContains(response, "js/app.js?v=20260713-pwa")
+        self.assertContains(response, 'rel="manifest"')
+        self.assertContains(response, "data-pwa-install")
+
+    def test_pwa_manifest_declares_standalone_app_and_required_icons(self):
+        static_root = Path(__file__).parent / "static"
+        manifest = json.loads((static_root / "manifest.webmanifest").read_text(encoding="utf-8"))
+        self.assertEqual(manifest["name"], "Beer Journal")
+        self.assertEqual(manifest["short_name"], "Beer")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["theme_color"], "#f7f7f5")
+        self.assertEqual(manifest["background_color"], "#f7f7f5")
+        self.assertEqual({icon["sizes"] for icon in manifest["icons"]}, {"192x192", "512x512"})
+        self.assertTrue(any(icon["purpose"] == "maskable" for icon in manifest["icons"]))
+        for icon in manifest["icons"]:
+            self.assertTrue((static_root / icon["src"].removeprefix("/static/")).exists())
+
+    def test_service_worker_caches_only_static_app_shell_and_never_private_records(self):
+        response = self.client.get("/service-worker.js")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("application/javascript", response["Content-Type"])
+        self.assertEqual(response["Cache-Control"], "no-cache")
+        content = response.content.decode()
+        self.assertIn("beer-journal-shell-v1", content)
+        self.assertIn("/static/css/app.css?v=20260713-pwa", content)
+        self.assertIn("/static/pwa/offline.html", content)
+        self.assertNotIn('"/beers/"', content)
+        self.assertNotIn('"/tastings/"', content)
+        self.assertIn('url.pathname.startsWith("/photos/")', content)
+        script = (Path(__file__).parent / "static" / "js" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('register("/service-worker.js", { scope: "/" })', script)
+        self.assertIn("beforeinstallprompt", script)
 
     def test_mobile_layout_components_use_svg_buttons_and_safe_content_spacing(self):
         stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")

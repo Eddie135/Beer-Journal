@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 192 192" role="img" aria-label="Beer Journal">
+  <rect width="192" height="192" fill="#18191b"/>
+  <path d="M68 47h56v42c0 26-12 46-28 46S68 115 68 89V47Z" fill="#f4a340"/>
+  <path d="M124 64h12c13 0 20 9 20 22s-7 22-20 22h-12" fill="none" stroke="#f4a340" stroke-linecap="round" stroke-width="12"/>
+  <path d="M72 47c0-11 7-18 16-18M95 47c0-11 7-18 16-18" fill="none" stroke="#fff7ea" stroke-linecap="round" stroke-width="8"/>
+  <path d="M82 83h28M82 101h28" stroke="#18191b" stroke-linecap="round" stroke-width="7"/>
+</svg>

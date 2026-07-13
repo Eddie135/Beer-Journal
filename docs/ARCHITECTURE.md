@@ -61,6 +61,10 @@
 
 PWA 并不要求使用单页应用。Django 页面同样可以提供 manifest、图标、Service Worker、响应式布局和“添加到主屏幕”。若未来确定要开发原生 App，再为 Django 增加受控 API，不需要现在提前承担这部分复杂度。
 
+### PWA 应用壳策略
+
+v4.0-A 使用 Web App Manifest、根路径 Service Worker 和本地图标实现可安装体验。Service Worker 仅预缓存版本化 CSS、JavaScript、Manifest、应用图标和不含私人数据的离线提示页；动态 HTML、Beer/Tasting 数据、照片、表单响应和任何 `/photos/` 内容始终走网络且不写入 Cache Storage。Service Worker 脚本本身使用 `no-cache` 响应头，以便浏览器及时检查新版本；激活新版后清理旧缓存。断网访问动态页只返回静态离线提示，不承诺离线新建、编辑或同步。此策略保持 Django 单体、PWA 和未来 Capacitor 包装兼容。
+
 ## 4. 版本策略
 
 - Django 使用 5.2 LTS 系列，并持续升级到该系列最新安全补丁；官方扩展支持至 2028 年 4 月。

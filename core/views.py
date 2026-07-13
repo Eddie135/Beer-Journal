@@ -23,6 +23,12 @@ def health(request):
     return JsonResponse({"status": "ok", "service": "beer-journal"})
 
 
+def service_worker(request):
+    response = render(request, "service_worker.js", content_type="application/javascript")
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 def beer_list(request):
     filters = {
         "q": request.GET.get("q", "").strip(),

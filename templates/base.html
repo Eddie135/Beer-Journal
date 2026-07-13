@@ -4,12 +4,19 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Beer">
   <title>{% block title %}BEER JOURNAL{% endblock %}</title>
-  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-mobile">
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <link rel="apple-touch-icon" href="{% static 'icons/beer-journal-192.svg' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-pwa">
 </head>
 <body>
   <header class="app-header">
-    <a class="app-wordmark" href="{% url 'beer-list' %}">BEER JOURNAL</a>
+    <a class="app-wordmark" href="{% url 'beer-list' %}">BEER JOURNAL</a><button class="pwa-install-button" type="button" hidden data-pwa-install>安装 App</button>
   </header>
   <main class="app-content" id="app-content">
     {% block content %}{% endblock %}
@@ -19,6 +26,6 @@
     <a class="tab-item{% if request.resolver_match.url_name == 'tasting-list' or request.resolver_match.url_name == 'tasting-detail' %} is-active{% endif %}" href="{% url 'tasting-list' %}"><span class="tab-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></span><span>饮用记录</span></a>
     <a class="tab-item{% if request.resolver_match.url_name == 'personal-data' %} is-active{% endif %}" href="{% url 'personal-data' %}"><span class="tab-icon"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9M12 19V5M19 19v-7"></path></svg></span><span>个人数据</span></a>
   </nav>
-  <script defer src="{% static 'js/app.js' %}?v=20260713-mobile"></script>
+  <script defer src="{% static 'js/app.js' %}?v=20260713-pwa"></script>
 </body>
 </html>
