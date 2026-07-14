@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
@@ -39,6 +40,10 @@ class HealthPageTests(TestCase):
 
 
 class ProductionSettingsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="private-user", password="test-only-password")
+        self.client.force_login(self.user)
+
     def test_database_url_supports_encoded_credentials_and_options(self):
         config = database_config_from_url(
             "postgresql://beer%5Fjournal:pa%24%24word@postgres:5433/beer_journal?sslmode=require"
@@ -162,6 +167,45 @@ class ProductionSettingsTests(TestCase):
         response = self.client.get("/health/")
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {"status": "ok", "service": "beer-journal"})
+
+
+class AuthenticationTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="owner", password="test-only-password")
+
+    def test_private_pages_and_photo_urls_redirect_anonymous_visitors_to_login(self):
+        for url in ("/", "/beers/", "/tastings/", "/personal/", "/photos/00000000-0000-0000-0000-000000000000/display/"):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 302)
+            self.assertTrue(response["Location"].startswith("/accounts/login/?next="))
+
+    def test_private_write_routes_redirect_anonymous_visitors_to_login(self):
+        response = self.client.post("/beers/add/")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "/accounts/login/?next=/beers/add/")
+
+    def test_health_and_service_worker_remain_public(self):
+        self.assertEqual(self.client.get("/health/").status_code, 200)
+        self.assertEqual(self.client.get("/service-worker.js").status_code, 200)
+
+    def test_login_sends_owner_to_requested_private_page_without_registration(self):
+        response = self.client.post(
+            "/accounts/login/?next=/beers/",
+            {"username": "owner", "password": "test-only-password", "next": "/beers/"},
+        )
+        self.assertRedirects(response, "/beers/", fetch_redirect_response=False)
+        self.assertEqual(self.client.get("/accounts/register/").status_code, 404)
+
+    def test_login_page_is_available_without_a_registration_link(self):
+        response = self.client.get("/accounts/login/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="username"')
+        self.assertNotContains(response, "注册")
+
+    def test_admin_keeps_its_own_login_page(self):
+        response = self.client.get("/admin/")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith("/admin/login/?next="))
 
 
 class CoreModelTests(TestCase):
@@ -349,6 +393,8 @@ class AdminWorkflowTests(TestCase):
 
 class PublicWorkflowTests(TransactionTestCase):
     def setUp(self):
+        self.user = get_user_model().objects.create_user(username="workflow-user", password="test-only-password")
+        self.client.force_login(self.user)
         self.category = BeerCategory.objects.create(name="艾尔", normalized_name="public-ale", code="public-ale")
         self.style = BeerStyle.objects.create(name="IPA", normalized_name="public-ipa", category=self.category)
         self.flavor = FlavorTag.objects.create(name="柑橘", normalized_name="public-柑橘", category="水果")

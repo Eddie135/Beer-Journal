@@ -102,6 +102,13 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [{"BACKEND": "django.template.backends.django.DjangoTemplates", "DIRS": [BASE_DIR / "templates"], "APP_DIRS": True, "OPTIONS": {"context_processors": ["django.template.context_processors.request", "django.contrib.auth.context_processors.auth", "django.contrib.messages.context_processors.messages"]}}]
 WSGI_APPLICATION = "config.wsgi.application"
 
+# This is a private, single-user application. There is deliberately no
+# registration route: the one account is created with Django's management
+# command during deployment.
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "beer-list"
+LOGOUT_REDIRECT_URL = "login"
+
 LANGUAGE_CODE = "zh-hans"
 TIME_ZONE = "Asia/Shanghai"
 USE_I18N = True

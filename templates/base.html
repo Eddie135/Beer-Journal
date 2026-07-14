@@ -17,6 +17,12 @@
 <body>
   <header class="app-header">
     <a class="app-wordmark" href="{% url 'beer-list' %}">BEER JOURNAL</a><button class="pwa-install-button" type="button" hidden data-pwa-install>安装 App</button>
+    {% if request.user.is_authenticated %}
+      <form class="header-logout-form" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="header-logout-button" type="submit">退出</button>
+      </form>
+    {% endif %}
   </header>
   <main class="app-content" id="app-content">
     {% block content %}{% endblock %}

@@ -1,0 +1,31 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f5">
+  <title>登录 · BEER JOURNAL</title>
+  <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260713-pwa">
+</head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-card" aria-labelledby="login-title">
+      <p class="login-wordmark">BEER JOURNAL</p>
+      <h1 id="login-title">欢迎回来</h1>
+      <p class="login-intro">登录后即可查看和记录你的私人啤酒收藏。</p>
+      <form method="post" class="login-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        <label for="id_username">用户名</label>
+        <input id="id_username" name="username" type="text" autocomplete="username" required autofocus>
+        <label for="id_password">密码</label>
+        <input id="id_password" name="password" type="password" autocomplete="current-password" required>
+        <input type="hidden" name="next" value="{{ next }}">
+        <button class="primary-button login-submit" type="submit">登录</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
