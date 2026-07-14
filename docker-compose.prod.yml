@@ -90,6 +90,7 @@ services:
       - letsencrypt_data:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
     networks:
+      - frontend
       - backend
     healthcheck:
       test: ["CMD-SHELL", "nginx -t"]
@@ -101,6 +102,7 @@ services:
     pids_limit: 64
 
 networks:
+  frontend:
   backend:
     internal: true
 
