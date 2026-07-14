@@ -1,7 +1,9 @@
 {
   "name": "Beer Journal",
   "short_name": "Beer",
+  "id": "/",
   "start_url": "/beers/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f7f7f5",
   "theme_color": "#f7f7f5",

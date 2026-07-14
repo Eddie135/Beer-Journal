@@ -63,7 +63,7 @@ PWA 并不要求使用单页应用。Django 页面同样可以提供 manifest、
 
 ### PWA 应用壳策略
 
-v4.0-A 使用 Web App Manifest、根路径 Service Worker 和本地图标实现可安装体验。Service Worker 仅预缓存版本化 CSS、JavaScript、Manifest、应用图标和不含私人数据的离线提示页；动态 HTML、Beer/Tasting 数据、照片、表单响应和任何 `/photos/` 内容始终走网络且不写入 Cache Storage。Service Worker 脚本本身使用 `no-cache` 响应头，以便浏览器及时检查新版本；激活新版后清理旧缓存。断网访问动态页只返回静态离线提示，不承诺离线新建、编辑或同步。此策略保持 Django 单体、PWA 和未来 Capacitor 包装兼容。
+v4.0-A 使用根路径公开 Web App Manifest、根路径 Service Worker 和本地图标实现可安装体验。Manifest 显式声明稳定 `id`、`start_url`、根 `scope`、独立窗口显示和图标，避免 Android 浏览器依赖默认的应用身份与安装范围推导。Service Worker 仅预缓存版本化 CSS、JavaScript、Manifest、应用图标和不含私人数据的离线提示页；动态 HTML、Beer/Tasting 数据、照片、表单响应和任何 `/photos/` 内容始终走网络且不写入 Cache Storage。Service Worker 脚本本身使用 `no-cache` 响应头，以便浏览器及时检查新版本；激活新版后清理旧缓存。断网访问动态页只返回静态离线提示，不承诺离线新建、编辑或同步。此策略保持 Django 单体、PWA 和未来 Capacitor 包装兼容。
 
 ## 4. 版本策略
 

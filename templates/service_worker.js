@@ -1,4 +1,4 @@
-const CACHE_NAME = "beer-journal-shell-v4";
+const CACHE_NAME = "beer-journal-shell-v5";
 const OFFLINE_URL = "/static/pwa/offline.html";
 const APP_SHELL = [
   "/static/css/app.css?v=20260714-e31",
