@@ -29,6 +29,13 @@ def service_worker(request):
     return response
 
 
+def manifest(request):
+    manifest_path = settings.BASE_DIR / "core" / "static" / "manifest.webmanifest"
+    response = FileResponse(manifest_path.open("rb"), content_type="application/manifest+json")
+    response["Cache-Control"] = "no-cache"
+    return response
+
+
 def beer_list(request):
     filters = {
         "q": request.GET.get("q", "").strip(),

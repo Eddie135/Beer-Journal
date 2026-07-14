@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path
 from core.views import (
     beer_detail, beer_list, create_beer_tasting, delete_beer, delete_photo, delete_tasting,
-    create_tasting, edit_beer, edit_tasting, health, home, personal_data, photo_file, restore_beer, restore_tasting, service_worker, start_tasting, tasting_detail, tasting_list, trash,
+    create_tasting, edit_beer, edit_tasting, health, home, manifest, personal_data, photo_file, restore_beer, restore_tasting, service_worker, start_tasting, tasting_detail, tasting_list, trash,
 )
 
 urlpatterns = [
@@ -12,6 +12,7 @@ urlpatterns = [
     path("accounts/login/", auth_views.LoginView.as_view(template_name="registration/login.html", redirect_authenticated_user=True), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", login_required(home), name="home"),
+    path("manifest.json", manifest, name="manifest"),
     path("service-worker.js", service_worker, name="service-worker"),
     path("beers/", login_required(beer_list), name="beer-list"),
     path("tastings/", login_required(tasting_list), name="tasting-list"),

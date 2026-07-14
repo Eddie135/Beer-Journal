@@ -101,6 +101,7 @@ class ProductionSettingsTests(TestCase):
         self.assertContains(response, "js/app.js?v=20260714-e31")
         self.assertContains(response, "beer-journal-favicon-v2.svg")
         self.assertContains(response, 'rel="manifest"')
+        self.assertContains(response, 'href="/manifest.json"')
         self.assertContains(response, 'rel="icon"')
         self.assertContains(response, "data-pwa-install")
 
@@ -122,14 +123,26 @@ class ProductionSettingsTests(TestCase):
                 width, height = map(int, icon["sizes"].split("x"))
                 self.assertEqual(image.size, (width, height))
 
+    def test_manifest_is_public_at_root_with_correct_content_type(self):
+        self.client.logout()
+        response = self.client.get("/manifest.json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("application/manifest+json", response["Content-Type"])
+        self.assertEqual(response["Cache-Control"], "no-cache")
+        manifest = json.loads(b"".join(response.streaming_content))
+        self.assertEqual(manifest["name"], "Beer Journal")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertTrue(any("beer-journal-icon-512-v2.png" in icon["src"] for icon in manifest["icons"]))
+
     def test_service_worker_caches_only_static_app_shell_and_never_private_records(self):
         response = self.client.get("/service-worker.js")
         self.assertEqual(response.status_code, 200)
         self.assertIn("application/javascript", response["Content-Type"])
         self.assertEqual(response["Cache-Control"], "no-cache")
         content = response.content.decode()
-        self.assertIn("beer-journal-shell-v3", content)
+        self.assertIn("beer-journal-shell-v4", content)
         self.assertIn("/static/css/app.css?v=20260714-e31", content)
+        self.assertIn('"/manifest.json"', content)
         self.assertIn("/static/pwa/offline.html", content)
         self.assertNotIn('"/beers/"', content)
         self.assertNotIn('"/tastings/"', content)
