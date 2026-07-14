@@ -50,6 +50,7 @@
 | v4.0-C6 | Django 生产环境适配 | 1 天 | 已完成并验证：生产安全环境变量、DATABASE_URL、静态文件目录与测试已完成；登录保护待实施 |
 | v4.0-E2 | 移动端 UI 组件统一 | 1 天 | 已完成并验证：自定义分类与日期时间 Bottom Sheet、照片上传预览卡片、PNG PWA 图标与缓存版本更新；待生产同步和真机验收 |
 | v4.0-E3.1 | 时间选择器定位与 PWA 图标升级 | 1 天 | 已完成并验证：打开日期 Sheet 后五列自动居中到当前/保存值；新文件名 v2 图标和 Service Worker v3 缓存已生成；待生产同步和真机验收 |
+| v4.0-F1 | Capacitor Android APK 封装 | 1 天 | 已完成本机 debug 编译：Capacitor 8 外壳、HTTPS 线上站点、v3 啤酒杯图标、adaptive/mipmap/splash 资源与 debug APK 已生成；待 Android 真机安装验收 |
 
 时间是节奏建议，不是跳过测试的截止期限。出现真实阻塞时优先保证数据安全和可回退性。
 

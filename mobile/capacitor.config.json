@@ -1,0 +1,29 @@
+{
+  "appId": "com.mybeerjournal.app",
+  "appName": "Beer Journal",
+  "webDir": "web",
+  "server": {
+    "url": "https://mybeerjournal.com",
+    "cleartext": false,
+    "allowNavigation": [
+      "mybeerjournal.com"
+    ]
+  },
+  "android": {
+    "backgroundColor": "#F7F7F5"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0,
+      "launchAutoHide": true,
+      "backgroundColor": "#F7F7F5",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "LIGHT",
+      "backgroundColor": "#F7F7F5",
+      "overlaysWebView": false
+    }
+  }
+}
