@@ -33,7 +33,6 @@ server {
         access_log off;
         expires 1y;
         add_header Cache-Control "public, max-age=31536000, immutable";
-        try_files $uri =404;
     }
 
     # 私有照片不允许由 Nginx 以静态目录形式公开。
