@@ -97,9 +97,10 @@ class ProductionSettingsTests(TestCase):
 
     def test_base_template_includes_versioned_pwa_assets_and_manifest(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260713-pwa")
-        self.assertContains(response, "js/app.js?v=20260713-pwa")
+        self.assertContains(response, "css/app.css?v=20260714-e2")
+        self.assertContains(response, "js/app.js?v=20260714-e2")
         self.assertContains(response, 'rel="manifest"')
+        self.assertContains(response, 'rel="icon"')
         self.assertContains(response, "data-pwa-install")
 
     def test_pwa_manifest_declares_standalone_app_and_required_icons(self):
@@ -113,7 +114,8 @@ class ProductionSettingsTests(TestCase):
         self.assertEqual({icon["sizes"] for icon in manifest["icons"]}, {"192x192", "512x512"})
         self.assertTrue(any(icon["purpose"] == "maskable" for icon in manifest["icons"]))
         for icon in manifest["icons"]:
-            self.assertTrue((static_root / icon["src"].removeprefix("/static/")).exists())
+            self.assertEqual(icon["type"], "image/png")
+            self.assertTrue((static_root / icon["src"].split("?", 1)[0].removeprefix("/static/")).exists())
 
     def test_service_worker_caches_only_static_app_shell_and_never_private_records(self):
         response = self.client.get("/service-worker.js")
@@ -121,8 +123,8 @@ class ProductionSettingsTests(TestCase):
         self.assertIn("application/javascript", response["Content-Type"])
         self.assertEqual(response["Cache-Control"], "no-cache")
         content = response.content.decode()
-        self.assertIn("beer-journal-shell-v1", content)
-        self.assertIn("/static/css/app.css?v=20260713-pwa", content)
+        self.assertIn("beer-journal-shell-v2", content)
+        self.assertIn("/static/css/app.css?v=20260714-e2", content)
         self.assertIn("/static/pwa/offline.html", content)
         self.assertNotIn('"/beers/"', content)
         self.assertNotIn('"/tastings/"', content)
@@ -130,6 +132,21 @@ class ProductionSettingsTests(TestCase):
         script = (Path(__file__).parent / "static" / "js" / "app.js").read_text(encoding="utf-8")
         self.assertIn('register("/service-worker.js", { scope: "/" })', script)
         self.assertIn("beforeinstallprompt", script)
+
+    def test_mobile_form_controls_have_custom_ui_hooks_without_changing_field_names(self):
+        response = self.client.get("/beers/add/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-category-select")
+        self.assertContains(response, "data-style-select")
+        self.assertContains(response, "data-datetime-picker")
+        self.assertContains(response, 'name="photos"')
+        script = (Path(__file__).parent / "static" / "js" / "app.js").read_text(encoding="utf-8")
+        stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")
+        self.assertIn("enhanceSelect", script)
+        self.assertIn("enhanceDateInput", script)
+        self.assertIn("enhancePhotoInput", script)
+        self.assertIn(".app-sheet", stylesheet)
+        self.assertIn(".photo-upload-card", stylesheet)
 
     def test_mobile_layout_components_use_svg_buttons_and_safe_content_spacing(self):
         stylesheet = (Path(__file__).parent / "static" / "css" / "app.css").read_text(encoding="utf-8")

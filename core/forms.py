@@ -89,7 +89,10 @@ class BeerSelectionForm(forms.Form):
 class DailyTastingForm(forms.Form):
     tasted_at = forms.DateTimeField(
         label="饮用时间",
-        widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
+        widget=forms.DateTimeInput(
+            attrs={"type": "text", "data-datetime-picker": "", "readonly": "readonly"},
+            format="%Y-%m-%dT%H:%M",
+        ),
         input_formats=["%Y-%m-%dT%H:%M"],
         initial=timezone.localtime,
     )
@@ -133,7 +136,15 @@ class CreateBeerTastingForm(forms.Form):
     bitterness_score = star_score_field("苦度", Beer.BITTERNESS_SCORE_CHOICES)
     flavor_complexity_score = star_score_field("风味复杂度", Beer.FLAVOR_COMPLEXITY_SCORE_CHOICES)
     flavor_tag_input = forms.CharField(label="风味标签", required=False, help_text="用逗号或顿号分隔，例如：柑橘、松脂、焦糖。")
-    tasted_at = forms.DateTimeField(label="品饮时间", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"], initial=timezone.localtime)
+    tasted_at = forms.DateTimeField(
+        label="品饮时间",
+        widget=forms.DateTimeInput(
+            attrs={"type": "text", "data-datetime-picker": "", "readonly": "readonly"},
+            format="%Y-%m-%dT%H:%M",
+        ),
+        input_formats=["%Y-%m-%dT%H:%M"],
+        initial=timezone.localtime,
+    )
     drinking_location = forms.CharField(label="饮用地点", max_length=255, required=False)
     price_amount = forms.DecimalField(label="价格", max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
     overall_score = forms.DecimalField(label="总评分（0–10，0.5 步进）", max_digits=3, decimal_places=1, required=False, min_value=Decimal("0"), max_value=Decimal("10"))
@@ -297,7 +308,14 @@ class BeerEditForm(forms.Form):
 
 
 class TastingEditForm(forms.Form):
-    tasted_at = forms.DateTimeField(label="品饮时间", widget=forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"), input_formats=["%Y-%m-%dT%H:%M"])
+    tasted_at = forms.DateTimeField(
+        label="品饮时间",
+        widget=forms.DateTimeInput(
+            attrs={"type": "text", "data-datetime-picker": "", "readonly": "readonly"},
+            format="%Y-%m-%dT%H:%M",
+        ),
+        input_formats=["%Y-%m-%dT%H:%M"],
+    )
     drinking_location = forms.CharField(label="饮用地点", max_length=255, required=False)
     price_amount = forms.DecimalField(label="价格", max_digits=12, decimal_places=2, required=False, min_value=Decimal("0"))
     overall_score = forms.DecimalField(label="总评分（0–10，0.5 步进）", max_digits=3, decimal_places=1, required=False, min_value=Decimal("0"), max_value=Decimal("10"))

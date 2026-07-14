@@ -1,12 +1,12 @@
-const CACHE_NAME = "beer-journal-shell-v1";
+const CACHE_NAME = "beer-journal-shell-v2";
 const OFFLINE_URL = "/static/pwa/offline.html";
 const APP_SHELL = [
-  "/static/css/app.css?v=20260713-pwa",
-  "/static/js/app.js?v=20260713-pwa",
+  "/static/css/app.css?v=20260714-e2",
+  "/static/js/app.js?v=20260714-e2",
   "/static/manifest.webmanifest",
-  "/static/icons/beer-journal-192.svg",
-  "/static/icons/beer-journal-512.svg",
-  "/static/icons/beer-journal-maskable.svg",
+  "/static/icons/beer-journal-192.png?v=20260714-e2",
+  "/static/icons/beer-journal-512.png?v=20260714-e2",
+  "/static/icons/beer-journal-maskable-512.png?v=20260714-e2",
   OFFLINE_URL,
 ];
 
