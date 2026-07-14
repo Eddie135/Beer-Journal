@@ -97,8 +97,9 @@ class ProductionSettingsTests(TestCase):
 
     def test_base_template_includes_versioned_pwa_assets_and_manifest(self):
         response = self.client.get("/beers/")
-        self.assertContains(response, "css/app.css?v=20260714-e2")
-        self.assertContains(response, "js/app.js?v=20260714-e2")
+        self.assertContains(response, "css/app.css?v=20260714-e31")
+        self.assertContains(response, "js/app.js?v=20260714-e31")
+        self.assertContains(response, "beer-journal-favicon-v2.svg")
         self.assertContains(response, 'rel="manifest"')
         self.assertContains(response, 'rel="icon"')
         self.assertContains(response, "data-pwa-install")
@@ -115,7 +116,11 @@ class ProductionSettingsTests(TestCase):
         self.assertTrue(any(icon["purpose"] == "maskable" for icon in manifest["icons"]))
         for icon in manifest["icons"]:
             self.assertEqual(icon["type"], "image/png")
-            self.assertTrue((static_root / icon["src"].split("?", 1)[0].removeprefix("/static/")).exists())
+            icon_path = static_root / icon["src"].split("?", 1)[0].removeprefix("/static/")
+            self.assertTrue(icon_path.exists())
+            with Image.open(icon_path) as image:
+                width, height = map(int, icon["sizes"].split("x"))
+                self.assertEqual(image.size, (width, height))
 
     def test_service_worker_caches_only_static_app_shell_and_never_private_records(self):
         response = self.client.get("/service-worker.js")
@@ -123,8 +128,8 @@ class ProductionSettingsTests(TestCase):
         self.assertIn("application/javascript", response["Content-Type"])
         self.assertEqual(response["Cache-Control"], "no-cache")
         content = response.content.decode()
-        self.assertIn("beer-journal-shell-v2", content)
-        self.assertIn("/static/css/app.css?v=20260714-e2", content)
+        self.assertIn("beer-journal-shell-v3", content)
+        self.assertIn("/static/css/app.css?v=20260714-e31", content)
         self.assertIn("/static/pwa/offline.html", content)
         self.assertNotIn('"/beers/"', content)
         self.assertNotIn('"/tastings/"', content)
@@ -132,6 +137,9 @@ class ProductionSettingsTests(TestCase):
         script = (Path(__file__).parent / "static" / "js" / "app.js").read_text(encoding="utf-8")
         self.assertIn('register("/service-worker.js", { scope: "/" })', script)
         self.assertIn("beforeinstallprompt", script)
+        self.assertIn("centerSelectedWheels", script)
+        self.assertIn("list.scrollTop", script)
+        self.assertIn("requestAnimationFrame(() => requestAnimationFrame(centerSelectedWheels))", script)
 
     def test_mobile_form_controls_have_custom_ui_hooks_without_changing_field_names(self):
         response = self.client.get("/beers/add/")

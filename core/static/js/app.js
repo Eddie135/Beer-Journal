@@ -119,6 +119,13 @@ const enhanceDateInput = (input) => {
   const sheet = createSheet("datetime-sheet", "选择品饮时间");
   let picked = dateValue(input);
   const sync = () => { trigger.querySelector("strong").textContent = displayDate(dateValue(input)); };
+  const centerSelectedWheels = () => {
+    sheet.body.querySelectorAll(".datetime-wheel-list .is-selected").forEach((selected) => {
+      const list = selected.closest(".datetime-wheel-list");
+      if (!list) return;
+      list.scrollTop = selected.offsetTop - (list.clientHeight - selected.offsetHeight) / 2;
+    });
+  };
   const renderWheel = (key, values, formatter = (value) => value) => {
     const column = document.createElement("div");
     column.className = "datetime-wheel";
@@ -171,8 +178,14 @@ const enhanceDateInput = (input) => {
     });
     actions.append(cancel, confirm);
     sheet.body.append(wheels, actions);
+    requestAnimationFrame(centerSelectedWheels);
   };
-  trigger.addEventListener("click", () => { picked = dateValue(input); render(); sheet.open(); });
+  trigger.addEventListener("click", () => {
+    picked = dateValue(input);
+    sheet.open();
+    render();
+    requestAnimationFrame(() => requestAnimationFrame(centerSelectedWheels));
+  });
   input.addEventListener("change", sync);
   sync();
 };
