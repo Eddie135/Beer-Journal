@@ -2,13 +2,6 @@
   "appId": "com.mybeerjournal.app",
   "appName": "Beer Journal",
   "webDir": "web",
-  "server": {
-    "url": "https://mybeerjournal.com",
-    "cleartext": false,
-    "allowNavigation": [
-      "mybeerjournal.com"
-    ]
-  },
   "android": {
     "backgroundColor": "#F7F7F5"
   },

@@ -564,3 +564,40 @@ CSV 使用 UTF-8 with BOM，方便中文 Windows 表格软件打开。CSV 主要
 - **多用户账号**：未来为 Beer、Tasting、Photo、Tag 等用户拥有的数据增加 `owner_id`，并通过迁移和权限策略隔离；当前单用户设计没有把 `user_id` 提前散落到每张表。
 
 结论：先按 13.2 创建核心 Django 模型，13.3 的实体只保留文档设计。本文档状态仍为“待用户确认”，确认后才进入模型实现。
+
+## 14. v1.0 本地 SQLite 设计（L1 审计结果）
+
+v1.0 不复用生产 PostgreSQL，也不迁移生产数据。APK 首次启动创建一个全新的本地 SQLite 数据库；Django 模型是字段含义的来源，SQLite 只是本地持久化实现。
+
+### 14.1 本地表范围
+
+| 本地表 | 主要字段 | 关系与说明 |
+|---|---|---|
+| `beers` | `id`、`name`、`brand_id`、`brewery_id`、`origin_country_code`、`origin_region`、`style_id`、ABV/Plato 缩放整数、默认容量、三项体验评分、`catalog_notes`、时间戳、`deleted_at`、同步预留字段 | 啤酒长期资料；软删除后默认不显示 |
+| `beer_categories` | `id`、`code`、`name`、排序、`is_active`、时间戳 | 拉格/艾尔等大类 |
+| `beer_styles` | `id`、`category_id`、`name`、规范化名、排序、`is_active`、时间戳 | 两级分类中的小类 |
+| `brands` / `breweries` | `id`、`name`、规范化名、国家、地区、备注、时间戳、`deleted_at` | 可复用来源实体 |
+| `flavor_tags` | `id`、`name`、`normalized_name`、`category`、时间戳 | 自定义标签，规范化名唯一 |
+| `beer_flavor_tags` | `beer_id`、`tag_id`、时间戳 | Beer 与风味标签多对多 |
+| `tastings` | `id`、`beer_id`、`tasted_at`、地点、容量、瓶数、渠道、价格、总评分、笔记、时间戳、`deleted_at`、同步预留字段 | 每次饮用独立记录 |
+| `photos` | `id`、`beer_id`、`tasting_id`、本地相对文件键、排序、尺寸、类型、校验值、时间戳、同步预留字段 | 本地照片路径不写绝对路径；v1.0 主要关联 Tasting |
+| `settings` | `key`、`value`、时间戳 | 应用设置、首次启动标记、备份信息 |
+
+`photos` 使用“Beer 或 Tasting 恰好一个非空”的约束，为将来保存 Beer 封面预留；第一版业务流程仍优先把照片归属于 Tasting，和当前 Django 规则一致。
+
+### 14.2 SQLite 精度与删除策略
+
+SQLite 没有 PostgreSQL 的 Decimal 类型，因此本地层不使用浮点数保存金额或评分：
+
+- 价格保存为最小货币单位整数（人民币元乘 100）；
+- 总评分保存为十分之一整数（例如 8.5 保存为 85）；
+- ABV、Plato 保存为百分之一整数；
+- 瓶数保存为百分之一整数，容量保存为毫升整数。
+
+所有业务表保留 UUID 文本主键、`created_at`、`updated_at`、`deleted_at`、`sync_status`、`remote_id` 和 `revision`，但 v1.0 不执行同步。删除默认写入 `deleted_at`，清空全部数据必须二次确认。
+
+### 14.3 数据访问层边界
+
+页面不得直接拼接 SQL。L2 起建立 `BeerRepository`、`TastingRepository`、`PhotoRepository` 和 `SettingsRepository`，由统一的 SQLite 适配器负责事务、约束和迁移。v1.1 同步只替换/扩展 Repository 实现，不重写页面。
+
+L1 只记录上述设计并建立前端骨架，不创建 SQLite 表或实现 CRUD。

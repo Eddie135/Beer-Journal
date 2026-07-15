@@ -1,0 +1,46 @@
+:root {
+  --local-bg: #f7f7f5;
+  --local-card: #ffffff;
+  --local-ink: #18191b;
+  --local-muted: #6b6f76;
+  --local-accent: #f4a340;
+  --local-radius: 24px;
+  --local-shadow: 0 8px 30px rgba(0, 0, 0, .06);
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; margin: 0; background: var(--local-bg); }
+body { color: var(--local-ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+button, a { -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+.local-app { min-height: 100dvh; padding: env(safe-area-inset-top) 18px calc(104px + env(safe-area-inset-bottom)); }
+.local-shell { width: min(100%, 720px); margin: 0 auto; }
+.local-header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 2px 22px; }
+.local-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.local-brand img { width: 42px; height: 42px; border-radius: 13px; object-fit: cover; box-shadow: 0 5px 15px rgba(24,25,27,.12); }
+.local-brand small { display: block; color: var(--local-muted); font-size: .7rem; letter-spacing: .14em; font-weight: 800; }
+.local-brand strong { display: block; margin-top: 2px; font-size: 1.1rem; letter-spacing: -.02em; }
+.local-page-title { margin: 0; font-size: clamp(2rem, 9vw, 3rem); letter-spacing: -.06em; line-height: 1.02; }
+.local-subtitle { margin: 10px 0 0; color: var(--local-muted); }
+.local-card { margin-top: 18px; padding: 22px; border-radius: var(--local-radius); background: var(--local-card); box-shadow: var(--local-shadow); }
+.local-card h2, .local-card h3 { margin: 0; letter-spacing: -.03em; }
+.local-empty { display: grid; justify-items: center; gap: 12px; padding: 46px 20px; text-align: center; }
+.local-empty-icon { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 24px; background: #fff3df; color: var(--local-accent); font-size: 2rem; }
+.local-empty p { max-width: 280px; margin: 0; color: var(--local-muted); line-height: 1.6; }
+.local-button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 16px; padding: 12px 18px; background: var(--local-accent); color: var(--local-ink); font: inherit; font-weight: 800; text-decoration: none; box-shadow: 0 8px 18px rgba(244,163,64,.2); transition: transform .2s ease, filter .2s ease; }
+.local-button:active { transform: scale(.97); filter: brightness(.97); }
+.local-button.secondary { background: #fff; box-shadow: inset 0 0 0 1px rgba(24,25,27,.08); }
+.local-button.danger { background: #fff0f0; color: #b64444; box-shadow: none; }
+.local-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.local-back { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 8px; color: var(--local-muted); font-weight: 750; text-decoration: none; }
+.local-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.local-stat { padding: 16px 12px; border-radius: 18px; background: #fafaf8; text-align: center; }
+.local-stat strong { display: block; font-size: 1.7rem; letter-spacing: -.06em; }
+.local-stat span { color: var(--local-muted); font-size: .78rem; }
+.local-note { color: var(--local-muted); line-height: 1.6; }
+.local-bottom-nav { position: fixed; z-index: 20; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; width: min(calc(100% - 24px), 520px); margin: 0 auto; padding: 7px; display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid rgba(255,255,255,.88); border-radius: 23px; background: rgba(255,255,255,.9); box-shadow: 0 14px 34px rgba(24,25,27,.14); backdrop-filter: blur(22px); }
+.local-tab { display: grid; justify-items: center; gap: 3px; min-height: 54px; padding: 8px 4px; border-radius: 17px; color: var(--local-muted); font-size: .75rem; font-weight: 750; text-decoration: none; }
+.local-tab.is-active { background: #fff3df; color: var(--local-ink); }
+.local-tab-icon { font-size: 1.2rem; line-height: 1; }
+.local-section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+@media (max-width: 430px) { .local-card { padding: 18px; } .local-stat-grid { gap: 7px; } }
