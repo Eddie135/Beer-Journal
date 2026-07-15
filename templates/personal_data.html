@@ -61,4 +61,7 @@
   </section>
 
   <section class="profile-section profile-recent-section"><div class="section-heading"><h2>最近饮用</h2><a href="{% url 'tasting-list' %}">查看全部</a></div><div class="recent-list">{% for tasting in recent_tastings %}<a class="recent-tasting app-card" href="{% url 'tasting-detail' tasting.id %}"><div><strong>{{ tasting.beer.name }}</strong><span>{{ tasting.tasted_at|date:"Y年n月j日" }} · {{ tasting.beer.origin_country_code|flag }} {{ tasting.beer.origin_country_code|country_name }}</span></div><b>{% if tasting.overall_score is not None %}★ {{ tasting.overall_score }}{% else %}—{% endif %}</b></a>{% empty %}<div class="empty-state app-card"><p>还没有饮用记录。</p></div>{% endfor %}</div></section>
+  <section class="profile-section profile-logout-section">
+    <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="button button-danger profile-action-danger" type="submit">退出登录</button></form>
+  </section>
 {% endblock %}

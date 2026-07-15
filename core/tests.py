@@ -229,19 +229,31 @@ class AuthenticationTests(TestCase):
         self.assertEqual(self.client.get("/health/").status_code, 200)
         self.assertEqual(self.client.get("/service-worker.js").status_code, 200)
 
-    def test_login_sends_owner_to_requested_private_page_without_registration(self):
+    def test_login_sends_owner_to_requested_private_page_and_registration_is_available(self):
         response = self.client.post(
             "/accounts/login/?next=/beers/",
             {"username": "owner", "password": "test-only-password", "next": "/beers/"},
         )
         self.assertRedirects(response, "/beers/", fetch_redirect_response=False)
-        self.assertEqual(self.client.get("/accounts/register/").status_code, 404)
+        self.client.logout()
+        self.assertEqual(self.client.get("/accounts/register/").status_code, 200)
 
-    def test_login_page_is_available_without_a_registration_link(self):
+    def test_login_page_includes_registration_link(self):
         response = self.client.get("/accounts/login/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'name="username"')
-        self.assertNotContains(response, "注册")
+        self.assertContains(response, "注册账号")
+
+    def test_registration_creates_user_and_logs_in(self):
+        response = self.client.post("/accounts/register/", {
+            "username": "new-owner",
+            "email": "owner@example.test",
+            "password": "safe-test-password",
+            "password_confirm": "safe-test-password",
+        })
+        self.assertRedirects(response, "/beers/", fetch_redirect_response=False)
+        self.assertTrue(get_user_model().objects.filter(username="new-owner").exists())
+        self.assertEqual(self.client.get("/beers/").status_code, 200)
 
     def test_admin_keeps_its_own_login_page(self):
         response = self.client.get("/admin/")
@@ -478,12 +490,32 @@ class PublicWorkflowTests(TransactionTestCase):
         self.assertFalse(tasting.rating_values.exists())
         self.assertFalse(tasting.tag_links.exists())
 
+    def test_new_beer_can_pause_before_first_tasting_and_then_add_it(self):
+        payload = self._valid_payload()
+        payload["workflow"] = "beer_only"
+        response = self.client.post("/beers/add/", payload)
+        self.assertEqual(response.status_code, 302)
+        beer = Beer.objects.get(name="用户流程 IPA")
+        self.assertEqual(beer.tastings.count(), 0)
+        self.assertRedirects(response, f"/beers/{beer.id}/first-tasting/", fetch_redirect_response=False)
+        choice = self.client.post(f"/beers/{beer.id}/first-tasting/", {"choice": "add"})
+        self.assertRedirects(choice, f"/beers/{beer.id}/tastings/add/", fetch_redirect_response=False)
+        tasting_payload = {
+            "tasted_at": "2026-07-15T20:30", "drinking_location": "家中", "capacity": "330",
+            "bottle_count": "1", "purchase_channel": "online", "price_amount": "22.00",
+            "overall_score": "8.5", "notes": "第一次真实流程测试。",
+        }
+        saved = self.client.post(f"/beers/{beer.id}/tastings/add/", tasting_payload)
+        self.assertEqual(saved.status_code, 302)
+        self.assertEqual(beer.tastings.count(), 1)
+
     def test_beer_form_uses_chinese_countries_and_category_matched_styles(self):
         response = self.client.get("/beers/add/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "德国")
         self.assertContains(response, 'data-category-select')
         self.assertContains(response, 'data-style-select')
+        self.assertContains(response, 'data-country-select')
         self.assertContains(response, 'name="mouthfeel_score"')
         self.assertContains(response, "清爽")
         self.assertContains(response, "醇厚")

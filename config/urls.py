@@ -4,13 +4,14 @@ from django.contrib.auth.decorators import login_required
 from django.urls import path
 from core.views import (
     beer_detail, beer_list, create_beer_tasting, delete_beer, delete_photo, delete_tasting,
-    create_tasting, edit_beer, edit_tasting, health, home, manifest, personal_data, photo_file, restore_beer, restore_tasting, service_worker, start_tasting, tasting_detail, tasting_list, trash,
+    create_tasting, edit_beer, edit_tasting, health, home, manifest, personal_data, photo_file, register, restore_beer, restore_tasting, service_worker, start_tasting, tasting_detail, tasting_list, trash, beer_first_tasting,
 )
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("accounts/login/", auth_views.LoginView.as_view(template_name="registration/login.html", redirect_authenticated_user=True), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(), name="logout"),
+    path("accounts/register/", register, name="register"),
     path("", login_required(home), name="home"),
     path("manifest.json", manifest, name="manifest"),
     path("service-worker.js", service_worker, name="service-worker"),
@@ -19,6 +20,7 @@ urlpatterns = [
     path("tastings/add/", login_required(start_tasting), name="tasting-start"),
     path("personal/", login_required(personal_data), name="personal-data"),
     path("beers/add/", login_required(create_beer_tasting), name="beer-add"),
+    path("beers/<uuid:beer_id>/first-tasting/", login_required(beer_first_tasting), name="beer-first-tasting"),
     path("beers/<uuid:beer_id>/", login_required(beer_detail), name="beer-detail"),
     path("beers/<uuid:beer_id>/tastings/add/", login_required(create_tasting), name="tasting-add"),
     path("beers/<uuid:beer_id>/edit/", login_required(edit_beer), name="beer-edit"),

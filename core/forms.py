@@ -1,10 +1,12 @@
 from decimal import Decimal
 
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from django.utils import timezone
 
-from .countries import COUNTRIES
+from .countries import COUNTRIES, COUNTRY_ENGLISH_NAMES, country_flag
 from .models import (
     Beer,
     BeerCategory,
@@ -24,6 +26,20 @@ class StyleSelect(forms.Select):
         if hasattr(value, "instance"):
             option["attrs"]["data-category-id"] = str(value.instance.category_id)
         return option
+
+
+class CountrySelect(forms.Select):
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            option["attrs"]["data-country-en"] = COUNTRY_ENGLISH_NAMES.get(str(value), "")
+            option["attrs"]["data-country-flag"] = country_flag(str(value))
+        return option
+
+    def __init__(self, *args, **kwargs):
+        attrs = kwargs.setdefault("attrs", {})
+        attrs["data-country-select"] = ""
+        super().__init__(*args, **kwargs)
 
 
 class TastingRatingValueAdminForm(forms.ModelForm):
@@ -127,7 +143,7 @@ class CreateBeerTastingForm(forms.Form):
     name = forms.CharField(label="啤酒名称", max_length=200)
     brand_name = forms.CharField(label="品牌", max_length=200, required=False)
     brewery_name = forms.CharField(label="酒厂", max_length=200, required=False)
-    origin_country_code = forms.ChoiceField(label="国家", choices=COUNTRIES)
+    origin_country_code = forms.ChoiceField(label="国家", choices=COUNTRIES, widget=CountrySelect())
     category = forms.ModelChoiceField(label="啤酒大类", queryset=BeerCategory.objects.none(), widget=forms.Select(attrs={"data-category-select": ""}))
     style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none(), widget=StyleSelect(attrs={"data-style-select": ""}))
     abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
@@ -213,7 +229,7 @@ class CreateBeerTastingForm(forms.Form):
         return source
 
     @transaction.atomic
-    def create_records(self):
+    def create_beer(self):
         if not self.is_valid():
             raise ValueError("表单必须先通过校验。")
         data = self.cleaned_data
@@ -233,6 +249,14 @@ class CreateBeerTastingForm(forms.Form):
         )
         for tag in self._get_or_create_flavor_tags(data["flavor_tag_input"]):
             BeerFlavorTag.objects.create(beer=beer, tag=tag)
+        return beer
+
+    @transaction.atomic
+    def create_records(self):
+        if not self.is_valid():
+            raise ValueError("表单必须先通过校验。")
+        data = self.cleaned_data
+        beer = self.create_beer()
         tasting = Tasting.objects.create(
             beer=beer,
             tasted_at=data["tasted_at"],
@@ -248,7 +272,7 @@ class BeerEditForm(forms.Form):
     name = forms.CharField(label="啤酒名称", max_length=200)
     brand_name = forms.CharField(label="品牌", max_length=200, required=False)
     brewery_name = forms.CharField(label="酒厂", max_length=200, required=False)
-    origin_country_code = forms.ChoiceField(label="国家", choices=COUNTRIES)
+    origin_country_code = forms.ChoiceField(label="国家", choices=COUNTRIES, widget=CountrySelect())
     category = forms.ModelChoiceField(label="啤酒大类", queryset=BeerCategory.objects.none(), widget=forms.Select(attrs={"data-category-select": ""}))
     style = forms.ModelChoiceField(label="啤酒类型", queryset=BeerStyle.objects.none(), widget=StyleSelect(attrs={"data-style-select": ""}))
     abv = forms.DecimalField(label="ABV 酒精度（%）", max_digits=5, decimal_places=2, required=False, min_value=Decimal("0"), max_value=Decimal("100"))
@@ -355,3 +379,37 @@ class TastingEditForm(forms.Form):
         self.tasting.notes = data["notes"]
         self.tasting.save()
         return self.tasting
+
+
+class RegistrationForm(forms.Form):
+    username = forms.CharField(label="用户名", max_length=150)
+    email = forms.EmailField(label="邮箱（可选）", required=False)
+    password = forms.CharField(label="密码", min_length=8, widget=forms.PasswordInput)
+    password_confirm = forms.CharField(label="确认密码", widget=forms.PasswordInput)
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip()
+        if not username:
+            raise forms.ValidationError("请填写用户名。")
+        if get_user_model().objects.filter(username__iexact=username).exists():
+            raise forms.ValidationError("这个用户名已经存在。")
+        return username
+
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        validate_password(password)
+        return password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("password") and cleaned_data.get("password_confirm") and cleaned_data["password"] != cleaned_data["password_confirm"]:
+            self.add_error("password_confirm", "两次输入的密码不一致。")
+        return cleaned_data
+
+    def save(self):
+        data = self.cleaned_data
+        return get_user_model().objects.create_user(
+            username=data["username"],
+            email=data.get("email", ""),
+            password=data["password"],
+        )

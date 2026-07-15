@@ -26,7 +26,7 @@
       <div class="filter-grid">
         <label>大分类<select name="category"><option value="">全部</option>{% for category in categories %}<option value="{{ category.id }}"{% if filters.category == category.id|stringformat:"s" %} selected{% endif %}>{{ category.name }}</option>{% endfor %}</select></label>
         <label>小类型<select name="style"><option value="">全部</option>{% for style in styles %}<option value="{{ style.id }}"{% if filters.style == style.id|stringformat:"s" %} selected{% endif %}>{{ style.category.name }} · {{ style.name }}</option>{% endfor %}</select></label>
-        <label>国家<select name="country"><option value="">全部</option>{% for code, name in countries %}<option value="{{ code }}"{% if filters.country == code %} selected{% endif %}>{{ code|flag }} {{ name }}</option>{% endfor %}</select></label>
+        <label>国家<select name="country" data-country-select><option value="">全部</option>{% for code, name in countries %}<option value="{{ code }}" data-country-en="{{ code|country_english }}"{% if filters.country == code %} selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
         <label>口感<select name="mouthfeel"><option value="">全部</option>{% for value, label in mouthfeel_choices %}<option value="{{ value }}"{% if filters.mouthfeel == value|stringformat:"s" %} selected{% endif %}>{{ value }} 星 · {{ label }}</option>{% endfor %}</select></label>
         <label>风味标签<select name="tag"><option value="">全部</option>{% for tag in flavor_tags %}<option value="{{ tag.id }}"{% if filters.tag == tag.id|stringformat:"s" %} selected{% endif %}>{{ tag.name }}</option>{% endfor %}</select></label>
         <label>最低评分<input name="min_score" inputmode="decimal" value="{{ filters.min_score }}" placeholder="例如 7.5"></label>

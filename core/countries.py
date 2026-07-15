@@ -6,6 +6,12 @@ COUNTRIES = (
 )
 
 COUNTRY_NAMES = dict(COUNTRIES)
+COUNTRY_ENGLISH_NAMES = {
+    "CN": "China", "DE": "Germany", "BE": "Belgium", "US": "United States USA",
+    "GB": "United Kingdom England UK", "IE": "Ireland", "JP": "Japan", "CZ": "Czechia Czech Republic",
+    "NL": "Netherlands Holland", "DK": "Denmark", "FR": "France", "IT": "Italy",
+    "ES": "Spain", "AU": "Australia", "NZ": "New Zealand", "CA": "Canada",
+}
 
 
 def country_flag(code):

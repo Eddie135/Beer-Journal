@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}编辑 {{ beer.name }} · BEER JOURNAL{% endblock %}
 {% block content %}
+  <a class="back-link" href="{% url 'beer-detail' beer.id %}">← 返回啤酒详情</a>
   <div class="page-heading"><div><p class="eyebrow">啤酒资料</p><h1>编辑 {{ beer.name }}</h1></div></div>
   <form method="post" enctype="multipart/form-data" class="record-form beer-edit-form">
     {% csrf_token %}

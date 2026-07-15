@@ -2,6 +2,7 @@
 {% load beer_extras %}
 {% block title %}饮酒日记 · BEER JOURNAL{% endblock %}
 {% block content %}
+  <a class="back-link" href="{% url 'tasting-list' %}">← 返回饮用记录</a>
   <section class="diary-hero app-card">
     <div class="diary-hero-media">
       {% with photo=tasting.photos.first %}
@@ -17,7 +18,7 @@
       <p class="screen-kicker">{{ tasting.tasted_at|date:"Y年n月j日 H:i" }}</p>
       <h1>{{ tasting.beer.name }}</h1>
       <p class="diary-beer-meta">{{ tasting.beer.origin_country_code|flag }} {{ tasting.beer.origin_country_code|country_name }} · {{ tasting.beer.style.category.name|default:"未分类" }} · {{ tasting.beer.style|default:"未填写类型" }}</p>
-      <div class="diary-actions"><a href="{% url 'beer-detail' tasting.beer.id %}">查看啤酒档案</a><a href="{% url 'tasting-edit' tasting.id %}">编辑记录</a><form method="post" action="{% url 'tasting-delete' tasting.id %}">{% csrf_token %}<button type="submit">删除</button></form></div>
+      <div class="diary-actions"><a class="button button-secondary" href="{% url 'beer-detail' tasting.beer.id %}">查看啤酒档案</a><button class="button button-secondary" type="button" data-action-sheet="#tasting-actions">更多</button></div>
     </div>
   </section>
 
@@ -46,4 +47,12 @@
       <div class="photo-grid">{% for photo in tasting.photos.all|slice:"1:" %}<a href="{% url 'photo-file' photo.id 'display' %}"><img class="progressive-image" src="{% url 'photo-file' photo.id 'thumbnail' %}" alt="{{ tasting.beer.name }} 照片"></a>{% endfor %}</div>
     </section>
   {% endif %}
+  <div class="action-sheet-overlay" id="tasting-actions-overlay"></div>
+  <section class="action-sheet-panel" id="tasting-actions" data-action-sheet-panel aria-hidden="true" aria-label="饮用记录操作">
+    <div class="action-sheet-handle"></div><h2>这条饮用记录</h2>
+    <a class="button button-secondary" href="{% url 'tasting-detail' tasting.id %}">查看详情</a>
+    <a class="button button-secondary" href="{% url 'tasting-edit' tasting.id %}">编辑记录</a>
+    <form method="post" action="{% url 'tasting-delete' tasting.id %}">{% csrf_token %}<button class="button button-danger" type="submit">删除记录</button></form>
+    <button class="button button-secondary" type="button" data-action-close>取消</button>
+  </section>
 {% endblock %}

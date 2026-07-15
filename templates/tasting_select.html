@@ -2,6 +2,7 @@
 {% load beer_extras %}
 {% block title %}选择啤酒 · BEER JOURNAL{% endblock %}
 {% block content %}
+  <a class="back-link" href="{% url 'tasting-list' %}">← 返回饮用记录</a>
   <section class="screen-heading"><p class="screen-kicker">NEW TASTING</p><h1>选择一款啤酒</h1><p>找到它后，马上记录这次饮用。</p></section>
   <form method="post" class="beer-picker-form record-form">
     {% csrf_token %}

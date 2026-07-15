@@ -2,6 +2,7 @@
 {% load beer_extras %}
 {% block title %}{{ beer.name }} · BEER JOURNAL{% endblock %}
 {% block content %}
+  <a class="back-link" href="{% url 'beer-list' %}">← 返回我的啤酒</a>
   <section class="beer-profile-hero">
     <div class="beer-profile-media">{% if beer.cover_photo %}<img class="beer-profile-image progressive-image" src="{% url 'photo-file' beer.cover_photo.id 'display' %}" alt="{{ beer.name }} 酒标或照片">{% else %}<div class="image-placeholder beer-profile-placeholder"><span>⌁</span><small>等待酒标照片</small></div>{% endif %}{% if average_score is not None %}<div class="hero-rating"><span>★</span><strong>{{ average_score|floatformat:1 }}</strong><small>平均评分</small></div>{% endif %}</div>
     <div class="beer-profile-copy"><p class="screen-kicker">{{ beer.origin_country_code|flag }} {{ beer.origin_country_code|country_name }}</p><h1>{{ beer.name }}</h1><p class="beer-profile-brand">{{ beer.brand|default:"未填写品牌" }}</p><p class="beer-profile-style">{{ beer.style.category.name|default:"未分类" }} · {{ beer.style|default:"未填写类型" }}</p><div class="beer-profile-actions"><a class="profile-action profile-action-secondary" href="{% url 'beer-edit' beer.id %}">编辑资料</a><form method="post" action="{% url 'beer-delete' beer.id %}">{% csrf_token %}<button class="profile-action profile-action-danger" type="submit">删除</button></form></div></div>

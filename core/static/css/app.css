@@ -131,7 +131,7 @@ body.filter-sheet-open .bottom-tab-bar { opacity: 0; pointer-events: none; trans
 .icon-button { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; background: var(--ink); color: #fff; font-size: 1.55rem; line-height: 1; text-decoration: none; transition: transform var(--motion-fast) var(--ease); }
 .icon-button:active { transform: scale(.91); }
 
-.record-form { max-width: 680px; padding: 20px; border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); }
+.record-form { max-width: 680px; display: grid; gap: 24px; padding: 20px; border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); }
 fieldset { display: grid; grid-template-columns: 1fr; gap: 15px; margin: 0 0 28px; padding: 0; border: 0; }
 legend { margin-bottom: 5px; font-size: 1.14rem; font-weight: 800; letter-spacing: -.02em; }
 .form-field { display: grid; gap: 8px; }
@@ -585,3 +585,37 @@ body.app-sheet-open .bottom-tab-bar { opacity: 0; pointer-events: none; transfor
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; scroll-behavior: auto !important; }
 }
+
+/* v4.0-F2.1 mobile interaction additions */
+.auth-switch { margin: 22px 0 0; color: var(--muted); text-align: center; }
+.auth-switch a { color: #a85f00; font-weight: 800; text-decoration: none; }
+.auth-field { display: grid; gap: 7px; }
+.auth-field input { width: 100%; min-height: 52px; padding: 12px 15px; border: 0; border-radius: var(--radius-control); background: var(--surface-soft); outline-color: var(--accent); }
+.auth-field ul.errorlist { margin: 0; padding: 0; color: var(--danger); list-style: none; font-size: .82rem; }
+.choice-card { margin-top: 18px; padding: 24px; }
+.choice-card h1 { margin: 0; letter-spacing: -.045em; }
+.choice-card > p:not(.screen-kicker) { color: var(--muted); line-height: 1.6; }
+.choice-actions { display: grid; gap: 12px; margin-top: 24px; }
+.back-link { display: inline-flex; align-items: center; min-height: 44px; margin: 2px 0 10px; color: var(--muted); font-size: .9rem; font-weight: 750; text-decoration: none; }
+.back-link:active { transform: translateX(-2px); }
+.sheet-search-input { width: 100%; min-height: 48px; margin-bottom: 10px; padding: 11px 14px; border: 0; border-radius: 14px; background: var(--surface-soft); color: var(--ink); outline-color: var(--accent); }
+.sheet-options-list { display: grid; gap: 4px; }
+.action-sheet-overlay { position: fixed; z-index: 39; inset: 0; visibility: hidden; background: rgba(24,25,27,.28); opacity: 0; transition: opacity var(--motion) var(--ease), visibility 0s linear var(--motion); }
+.action-sheet-overlay.is-open { visibility: visible; opacity: 1; transition-delay: 0s; }
+.action-sheet-panel { position: fixed; z-index: 40; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; display: grid; gap: 10px; padding: 18px; border-radius: 28px; background: rgba(255,255,255,.96); box-shadow: 0 22px 54px rgba(24,25,27,.2); opacity: 0; pointer-events: none; transform: translateY(18px); transition: opacity var(--motion) var(--ease), transform var(--motion) var(--ease); }
+.action-sheet-panel.is-open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.action-sheet-panel h2 { margin: 0 0 3px; font-size: 1.05rem; }
+.action-sheet-handle { width: 38px; height: 4px; margin: -4px auto 4px; border-radius: var(--radius-pill); background: var(--subtle); }
+.action-sheet-panel .button { width: 100%; }
+.profile-logout-section { padding-bottom: 22px; }
+.profile-logout-section form, .profile-logout-section button { width: 100%; }
+.first-tasting-legacy-fields { display: none !important; }
+
+@media (max-width: 520px) {
+  .app-header { padding-top: calc(10px + env(safe-area-inset-top)); }
+  .app-content { padding-top: 2px; }
+  .diary-actions { flex-wrap: wrap; }
+  .diary-actions .button { min-height: 44px; }
+}
+
+img, .collection-image, .tasting-card-image, .diary-hero-image, .photo-grid img { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }

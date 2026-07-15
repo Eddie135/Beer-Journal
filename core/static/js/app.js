@@ -1,5 +1,19 @@
 const makeIcon = (path) => `<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${path}"></path></svg>`;
 
+const countryFlag = (code) => {
+  if (!code || code.length !== 2) return "🌍";
+  return [...code.toUpperCase()].map((letter) => String.fromCodePoint(0x1f1e6 + letter.charCodeAt(0) - 65)).join("");
+};
+
+const countryDisplay = (option) => option ? `${option.dataset.countryFlag || countryFlag(option.value)} ${option.textContent.trim()}` : "请选择国家";
+const countryRecentKey = "beer-journal-recent-countries";
+const recentCountries = () => {
+  try { return JSON.parse(window.localStorage.getItem(countryRecentKey) || "[]").filter(Boolean); } catch (error) { return []; }
+};
+const rememberCountry = (code) => {
+  try { window.localStorage.setItem(countryRecentKey, JSON.stringify([code, ...recentCountries().filter((item) => item !== code)].slice(0, 5))); } catch (error) { /* private mode may block storage */ }
+};
+
 const createSheet = (className, title) => {
   const overlay = document.createElement("button");
   overlay.type = "button";
@@ -47,24 +61,44 @@ const enhanceSelect = (select) => {
   const sheet = createSheet("select-sheet", label);
   const sync = () => {
     const selected = select.selectedOptions[0];
-    control.querySelector("strong").textContent = selected?.value ? selected.textContent.trim() : `请选择${label}`;
+    control.querySelector("strong").textContent = selected?.value ? (select.dataset.countrySelect !== undefined ? countryDisplay(selected) : selected.textContent.trim()) : `请选择${label}`;
   };
   const render = () => {
     sheet.body.replaceChildren();
-    Array.from(select.options).filter((option) => option.value && !option.hidden).forEach((option) => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.className = "sheet-option";
-      item.textContent = option.textContent.trim();
-      item.classList.toggle("is-selected", option.selected);
-      item.addEventListener("click", () => {
-        select.value = option.value;
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-        sync();
-        sheet.close();
+    const search = select.dataset.countrySelect !== undefined ? document.createElement("input") : null;
+    if (search) {
+      search.type = "search";
+      search.className = "sheet-search-input";
+      search.placeholder = "搜索中文或英文国家名";
+      search.setAttribute("aria-label", "搜索国家");
+      sheet.body.append(search);
+    }
+    const optionsBody = document.createElement("div");
+    optionsBody.className = "sheet-options-list";
+    const renderOptions = () => {
+      optionsBody.replaceChildren();
+      const term = search?.value.trim().toLocaleLowerCase("zh-CN") || "";
+      const allOptions = Array.from(select.options).filter((option) => option.value && !option.hidden);
+      const orderedOptions = select.dataset.countrySelect !== undefined ? allOptions.sort((a, b) => { const recent = recentCountries(); const rank = (value) => { const index = recent.indexOf(value); return index === -1 ? 999 : index; }; return rank(a.value) - rank(b.value); }) : allOptions;
+      orderedOptions.filter((option) => !term || `${option.value} ${option.textContent} ${option.dataset.countryEn || ""}`.toLocaleLowerCase("zh-CN").includes(term)).forEach((option) => {
+        const item = document.createElement("button");
+        item.type = "button";
+        item.className = "sheet-option";
+        item.textContent = select.dataset.countrySelect !== undefined ? countryDisplay(option) : option.textContent.trim();
+        item.classList.toggle("is-selected", option.selected);
+        item.addEventListener("click", () => {
+          select.value = option.value;
+          if (select.dataset.countrySelect !== undefined) rememberCountry(option.value);
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          sync();
+          sheet.close();
+        });
+        optionsBody.append(item);
       });
-      sheet.body.append(item);
-    });
+    };
+    if (search) search.addEventListener("input", renderOptions);
+    sheet.body.append(optionsBody);
+    renderOptions();
   };
   control.addEventListener("click", () => {
     render();
@@ -223,7 +257,20 @@ const enhancePhotoInput = (input) => {
   button.insertAdjacentElement("afterend", preview);
 };
 
+let exitArmedUntil = 0;
+
 const initializeApp = () => {
+  if (!window.__beerJournalNativeHooks) {
+    window.__beerJournalNativeHooks = true;
+    const nativeApp = window.Capacitor?.Plugins?.App;
+    nativeApp?.addListener?.("backButton", () => window.dispatchEvent(new Event("nativeback")));
+    nativeApp?.addListener?.("appStateChange", ({ isActive }) => {
+      if (isActive) {
+        window.dispatchEvent(new Event("pageshow"));
+        document.querySelectorAll("[data-datetime-picker], [data-country-select]").forEach((element) => element.dispatchEvent(new Event("change", { bubbles: true })));
+      }
+    });
+  }
   document.querySelectorAll(".progressive-image").forEach((image) => {
     const reveal = () => image.classList.add("is-loaded");
     if (image.complete) reveal();
@@ -232,6 +279,30 @@ const initializeApp = () => {
   initializeCategorySelects();
   document.querySelectorAll("[data-datetime-picker]").forEach(enhanceDateInput);
   document.querySelectorAll('input[type="file"][multiple]').forEach(enhancePhotoInput);
+
+  document.querySelectorAll("[data-action-sheet]").forEach((trigger) => {
+    if (trigger.dataset.enhanced) return;
+    trigger.dataset.enhanced = "true";
+    const sheet = document.querySelector(trigger.dataset.actionSheet);
+    const overlay = sheet ? document.querySelector(`${trigger.dataset.actionSheet}-overlay`) : null;
+    const close = () => { sheet?.classList.remove("is-open"); overlay?.classList.remove("is-open"); sheet?.setAttribute("aria-hidden", "true"); };
+    trigger.addEventListener("click", () => { sheet?.classList.add("is-open"); overlay?.classList.add("is-open"); sheet?.setAttribute("aria-hidden", "false"); });
+    sheet?.querySelectorAll("[data-action-close]").forEach((button) => button.addEventListener("click", close));
+    overlay?.addEventListener("click", close);
+  });
+
+  window.addEventListener("nativeback", () => {
+    const focused = document.activeElement;
+    if (focused && ["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) { focused.blur(); return; }
+    const openSheet = document.querySelector(".is-open[data-action-sheet-panel], .filter-sheet.is-open, .app-sheet.is-open");
+    if (openSheet) { openSheet.querySelector("[data-action-close], .sheet-close, [data-filter-close]")?.click(); return; }
+    if (window.history.length > 1) { window.history.back(); return; }
+    if (Date.now() < exitArmedUntil) { window.Capacitor?.Plugins?.App?.exitApp?.(); return; }
+    exitArmedUntil = Date.now() + 2200;
+    window.alert("再次按返回键退出 Beer Journal");
+    window.setTimeout(() => { exitArmedUntil = 0; }, 2200);
+  });
+  window.addEventListener("pageshow", () => { initializeApp(); });
 
   document.querySelectorAll("[data-beer-search]").forEach((searchField) => {
     const form = searchField.closest("form");

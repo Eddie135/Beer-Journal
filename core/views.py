@@ -6,12 +6,13 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Avg, Count, F, Max, Prefetch, Q
 from django.db.models.functions import TruncMonth
+from django.contrib.auth import login
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import BeerEditForm, BeerSelectionForm, CreateBeerTastingForm, DailyTastingForm, TastingEditForm
+from .forms import BeerEditForm, BeerSelectionForm, CreateBeerTastingForm, DailyTastingForm, RegistrationForm, TastingEditForm
 from .countries import COUNTRIES, COUNTRY_NAMES
 from .models import Beer, BeerCategory, BeerStyle, FlavorTag, Photo, Tasting
 from .photo_service import PhotoProcessingError, create_photos, delete_photo_keys
@@ -21,6 +22,17 @@ def home(request):
 
 def health(request):
     return JsonResponse({"status": "ok", "service": "beer-journal"})
+
+
+def register(request):
+    if request.user.is_authenticated:
+        return redirect("beer-list")
+    form = RegistrationForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        login(request, user)
+        return redirect("beer-list")
+    return render(request, "registration/register.html", {"form": form})
 
 
 def service_worker(request):
@@ -353,6 +365,10 @@ def create_beer_tasting(request):
         form = CreateBeerTastingForm(request.POST, request.FILES)
         if form.is_valid():
             try:
+                if request.POST.get("workflow") == "beer_only":
+                    with transaction.atomic():
+                        beer = form.create_beer()
+                    return redirect("beer-first-tasting", beer_id=beer.id)
                 with transaction.atomic():
                     beer, tasting = form.create_records()
                     create_photos(tasting, form.cleaned_data["photos"])
@@ -364,6 +380,17 @@ def create_beer_tasting(request):
     else:
         form = CreateBeerTastingForm()
     return render(request, "beer_form.html", {"form": form, "from_tasting": request.GET.get("from") == "tasting" or request.POST.get("from_tasting") == "1"})
+
+
+def beer_first_tasting(request, beer_id):
+    beer = get_object_or_404(Beer.objects.filter(deleted_at__isnull=True), id=beer_id)
+    if request.method == "POST":
+        choice = request.POST.get("choice")
+        if choice == "add":
+            return redirect("tasting-add", beer_id=beer.id)
+        if choice == "later":
+            return redirect("beer-detail", beer_id=beer.id)
+    return render(request, "beer_first_tasting.html", {"beer": beer})
 
 
 def beer_detail(request, beer_id):

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ beer.name }} · 首次品饮{% endblock %}
+{% block content %}
+  <a class="back-link" href="{% url 'beer-detail' beer.id %}">← 返回啤酒详情</a>
+  <section class="choice-card app-card">
+    <p class="screen-kicker">BEER SAVED</p>
+    <h1>{{ beer.name }} 已保存</h1>
+    <p>现在要不要补充这瓶啤酒的第一次品饮？地点、容量、瓶数、评分和照片都可以在下一步填写。</p>
+    <form method="post" class="choice-actions">
+      {% csrf_token %}
+      <button class="button" type="submit" name="choice" value="add">添加本次品饮</button>
+      <button class="button button-secondary" type="submit" name="choice" value="later">稍后添加</button>
+    </form>
+  </section>
+{% endblock %}

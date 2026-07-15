@@ -2,14 +2,16 @@
 {% block title %}添加啤酒 · BEER JOURNAL{% endblock %}
 {% block content %}
   <div class="page-heading"><div><p class="eyebrow">一次完成</p><h1>添加啤酒与首次品饮</h1><p>保存后会同时建立啤酒资料和第一条品饮记录。</p></div></div>
-  <form method="post" enctype="multipart/form-data" class="record-form">
+  <a class="back-link" href="{% if from_tasting %}{% url 'tasting-start' %}{% else %}{% url 'beer-list' %}{% endif %}">← 返回</a>
+  <form method="post" enctype="multipart/form-data" class="record-form" data-beer-create-form>
     {% csrf_token %}
     {% if from_tasting %}<input type="hidden" name="from_tasting" value="1">{% endif %}
+    <input type="hidden" name="workflow" value="beer_only">
     {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
     <fieldset><legend>啤酒基础资料</legend>
       {% for field in form.beer_fields %}{% if field.name == "mouthfeel_score" %}<div class="form-field star-score-field{% if field.errors %} has-error{% endif %}"><span class="score-field-label">{{ field.label }}</span><div class="score-selector"><span class="score-end">清爽</span><div class="star-radio">{{ field }}</div><span class="score-end">醇厚</span></div>{{ field.errors }}</div>{% elif field.name == "bitterness_score" %}<div class="form-field star-score-field{% if field.errors %} has-error{% endif %}"><span class="score-field-label">{{ field.label }}</span><div class="score-selector"><span class="score-end">淡</span><div class="star-radio">{{ field }}</div><span class="score-end">苦</span></div>{{ field.errors }}</div>{% elif field.name == "flavor_complexity_score" %}<div class="form-field star-score-field{% if field.errors %} has-error{% endif %}"><span class="score-field-label">{{ field.label }}</span><div class="score-selector"><span class="score-end">简单</span><div class="star-radio">{{ field }}</div><span class="score-end">复杂</span></div>{{ field.errors }}</div>{% else %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{{ field.errors }}</div>{% endif %}{% endfor %}
     </fieldset>
-    <fieldset><legend>第一次品饮</legend>
+    <fieldset class="first-tasting-legacy-fields" hidden><legend>第一次品饮</legend>
       {% for field in form.tasting_fields %}<div class="form-field{% if field.errors %} has-error{% endif %}">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>{% endfor %}
     </fieldset>
     <button class="button" type="submit">保存啤酒与首次品饮</button>
