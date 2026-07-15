@@ -518,6 +518,8 @@ dd { margin: 0; }
 .login-form label { margin-top: 7px; color: var(--muted); font-size: .8rem; font-weight: 800; }
 .login-form input:not([type="hidden"]) { min-height: 52px; width: 100%; border: 0; border-radius: 16px; background: var(--surface-soft); color: var(--ink); padding: 0 15px; font: inherit; outline: none; }
 .login-form input:not([type="hidden"]):focus { box-shadow: 0 0 0 3px rgba(244, 163, 64, .28); }
+.primary-button { min-height: 52px; display: inline-flex; align-items: center; justify-content: center; padding: 12px 18px; border: 0; border-radius: 16px; background: var(--accent); box-shadow: 0 8px 18px rgba(244, 163, 64, .2); color: var(--ink); font: inherit; font-weight: 800; cursor: pointer; transition: transform var(--motion-fast) var(--ease), filter var(--motion) var(--ease), box-shadow var(--motion) var(--ease); }
+.primary-button:active { transform: scale(.96); box-shadow: 0 4px 11px rgba(244, 163, 64, .18); }
 .login-submit { width: 100%; margin-top: 15px; }
 .chart-track-purple i { background: var(--purple); }
 
@@ -619,3 +621,4 @@ body.app-sheet-open .bottom-tab-bar { opacity: 0; pointer-events: none; transfor
 }
 
 img, .collection-image, .tasting-card-image, .diary-hero-image, .photo-grid img { user-select: none; -webkit-user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 220ms; animation-timing-function: var(--ease); }

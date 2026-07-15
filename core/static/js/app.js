@@ -291,18 +291,46 @@ const initializeApp = () => {
     overlay?.addEventListener("click", close);
   });
 
-  window.addEventListener("nativeback", () => {
-    const focused = document.activeElement;
-    if (focused && ["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) { focused.blur(); return; }
-    const openSheet = document.querySelector(".is-open[data-action-sheet-panel], .filter-sheet.is-open, .app-sheet.is-open");
-    if (openSheet) { openSheet.querySelector("[data-action-close], .sheet-close, [data-filter-close]")?.click(); return; }
-    if (window.history.length > 1) { window.history.back(); return; }
-    if (Date.now() < exitArmedUntil) { window.Capacitor?.Plugins?.App?.exitApp?.(); return; }
-    exitArmedUntil = Date.now() + 2200;
-    window.alert("再次按返回键退出 Beer Journal");
-    window.setTimeout(() => { exitArmedUntil = 0; }, 2200);
+  if (!window.__beerJournalGlobalEvents) {
+    window.__beerJournalGlobalEvents = true;
+    window.addEventListener("nativeback", () => {
+      const focused = document.activeElement;
+      if (focused && ["INPUT", "TEXTAREA", "SELECT"].includes(focused.tagName)) { focused.blur(); return; }
+      const openSheet = document.querySelector(".is-open[data-action-sheet-panel], .filter-sheet.is-open, .app-sheet.is-open");
+      if (openSheet) { openSheet.querySelector("[data-action-close], .sheet-close, [data-filter-close]")?.click(); return; }
+      if (window.history.length > 1) { window.history.back(); return; }
+      if (Date.now() < exitArmedUntil) { window.Capacitor?.Plugins?.App?.exitApp?.(); return; }
+      exitArmedUntil = Date.now() + 2200;
+      window.alert("再次按返回键退出 Beer Journal");
+      window.setTimeout(() => { exitArmedUntil = 0; }, 2200);
+    });
+    window.addEventListener("pageshow", () => { initializeApp(); });
+  }
+
+  document.querySelectorAll("[data-tab-navigation]").forEach((link) => {
+    if (link.dataset.enhanced) return;
+    link.dataset.enhanced = "true";
+    link.addEventListener("click", async (event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = new URL(link.href, window.location.href);
+      if (target.origin !== window.location.origin) return;
+      event.preventDefault();
+      const swap = async () => {
+        const response = await fetch(target.href, { headers: { "X-Requested-With": "BeerJournalTab" } });
+        if (!response.ok || response.url.includes("/accounts/login/")) { window.location.href = target.href; return; }
+        const nextDocument = new DOMParser().parseFromString(await response.text(), "text/html");
+        const nextContent = nextDocument.querySelector("#app-content");
+        if (!nextContent) { window.location.href = target.href; return; }
+        document.querySelector("#app-content")?.replaceWith(nextContent);
+        document.title = nextDocument.title;
+        document.querySelectorAll("[data-tab-navigation]").forEach((item) => item.classList.toggle("is-active", new URL(item.href, window.location.href).pathname === target.pathname));
+        window.history.pushState({}, "", target.href);
+        initializeApp();
+      };
+      if (document.startViewTransition) document.startViewTransition(swap);
+      else await swap();
+    });
   });
-  window.addEventListener("pageshow", () => { initializeApp(); });
 
   document.querySelectorAll("[data-beer-search]").forEach((searchField) => {
     const form = searchField.closest("form");
@@ -314,6 +342,8 @@ const initializeApp = () => {
   });
 
   document.querySelectorAll("[data-filter-sheet]").forEach((sheet) => {
+    if (sheet.dataset.enhanced) return;
+    sheet.dataset.enhanced = "true";
     const overlay = document.querySelector("[data-filter-overlay]");
     const openButton = document.querySelector("[data-filter-open]");
     const closeButton = sheet.querySelector("[data-filter-close]");
