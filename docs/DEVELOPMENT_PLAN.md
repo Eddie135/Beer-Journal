@@ -554,3 +554,11 @@ Codex 随后应验证 Git、Docker 与 Docker Compose，而不是让用户自行
 - 生成 debug APK，暂不创建 release keystore。
 
 v1.1 再设计服务器同步/备份、账号和多语言；v1.2 再评估统计增强与深色模式。任何 L1-L5 阶段都不得修改生产服务器或清空生产 PostgreSQL。
+
+## 15. L2 当前结果
+
+- 已安装并同步 Capacitor 8 兼容的 `@capacitor-community/sqlite@8.1.0`。
+- 已完成本地 schema 版本 1、事务迁移、重复初始化保护和 Repository 测试。
+- 已完成 Beer 列表、新增、详情、编辑、软删除、搜索和基础筛选；删除不会物理清除记录。
+- 已生成 `Beer-Journal-v1.0.0-beta2-debug.apk`，versionCode 为 5。
+- L2 完成后停止，不进入 Tasting、照片或备份实现；Android 真机离线验收仍需实际连接设备后执行。

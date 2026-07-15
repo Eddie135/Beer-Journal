@@ -320,3 +320,10 @@ Capacitor Android APK
 - 不实现 Beer/Tasting CRUD、SQLite 写入、照片选择或备份；
 - 不连接、修改或验证生产服务器；
 - L1 完成后停止，进入 L2 前先复核本地数据结构设计。
+
+## 18. v1.0 L2 SQLite 实现
+
+- SQLite 选用 `@capacitor-community/sqlite@8.1.0`，peer dependency 为 Capacitor Core `>=8.0.0`，与当前 Capacitor 8 工程兼容。
+- `mobile/web/assets/database.js` 统一管理稳定数据库名、连接初始化、schema 版本和事务迁移；页面不直接执行 SQL。
+- `mobile/web/assets/beer-repository.js` 提供 Beer 的创建、查询、搜索、筛选、更新和软删除；所有写入维护 `updated_at`、`revision` 和 `sync_status`。
+- v1.0 使用本地内置 Web 资源和 Android 原生 SQLite；浏览器预览环境没有 SQLite 插件时必须显示明确错误，不使用 `localStorage` 伪装数据库。

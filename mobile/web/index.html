@@ -11,8 +11,22 @@
   <title>Beer Journal</title>
 </head>
 <body>
-  <div id="app" class="local-app" aria-live="polite"></div>
+  <div id="app-shell" class="local-app" data-app-shell>
+    <header class="local-header" data-app-header>
+      <div class="local-brand">
+        <img id="app-logo" class="logo-image" src="assets/beer-journal-icon.png" width="42" height="42" alt="Beer Journal">
+        <div><small>BEER JOURNAL</small><strong>本地收藏</strong></div>
+      </div>
+    </header>
+    <main id="route-content" class="local-route-content" aria-live="polite"></main>
+    <nav id="bottom-nav" class="local-bottom-nav" data-app-bottom-nav aria-label="主要导航">
+      <a class="local-tab" href="#/beers" data-route="/beers"><span class="local-tab-icon" aria-hidden="true">🍺</span><span>我的啤酒</span></a>
+      <a class="local-tab" href="#/tastings" data-route="/tastings"><span class="local-tab-icon" aria-hidden="true">📝</span><span>饮用记录</span></a>
+      <a class="local-tab" href="#/profile" data-route="/profile"><span class="local-tab-icon" aria-hidden="true">◉</span><span>个人数据</span></a>
+    </nav>
+  </div>
   <noscript>Beer Journal 需要启用 JavaScript 才能运行。</noscript>
-  <script src="assets/app.js" defer></script>
+  <script src="assets/sqlite-plugin.js"></script>
+  <script type="module" src="assets/app.js"></script>
 </body>
 </html>

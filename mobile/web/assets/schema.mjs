@@ -1,0 +1,137 @@
+export const DB_NAME = "beer_journal";
+export const SCHEMA_VERSION = 1;
+
+export const MIGRATIONS = [
+  {
+    version: 1,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS beers (
+        id TEXT PRIMARY KEY NOT NULL,
+        remote_id TEXT,
+        owner_id TEXT,
+        name TEXT NOT NULL,
+        brand TEXT NOT NULL DEFAULT '',
+        brewery TEXT NOT NULL DEFAULT '',
+        country_code TEXT NOT NULL DEFAULT '',
+        country_name TEXT NOT NULL DEFAULT '',
+        style TEXT NOT NULL DEFAULT '',
+        category TEXT NOT NULL DEFAULT '',
+        abv_scaled INTEGER,
+        plato_scaled INTEGER,
+        default_volume_ml INTEGER,
+        personal_note TEXT NOT NULL DEFAULT '',
+        overall_rating_scaled INTEGER,
+        mouthfeel_rating INTEGER,
+        bitterness_rating INTEGER,
+        complexity_rating INTEGER,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_status TEXT NOT NULL DEFAULT 'local',
+        revision INTEGER NOT NULL DEFAULT 1,
+        CHECK (length(trim(name)) > 0),
+        CHECK (abv_scaled IS NULL OR (abv_scaled >= 0 AND abv_scaled <= 10000)),
+        CHECK (plato_scaled IS NULL OR (plato_scaled >= 0 AND plato_scaled <= 10000)),
+        CHECK (default_volume_ml IS NULL OR default_volume_ml > 0),
+        CHECK (overall_rating_scaled IS NULL OR (overall_rating_scaled >= 0 AND overall_rating_scaled <= 100)),
+        CHECK (mouthfeel_rating IS NULL OR (mouthfeel_rating BETWEEN 1 AND 5)),
+        CHECK (bitterness_rating IS NULL OR (bitterness_rating BETWEEN 1 AND 5)),
+        CHECK (complexity_rating IS NULL OR (complexity_rating BETWEEN 1 AND 5)),
+        CHECK (sync_status IN ('local', 'pending_update', 'pending_delete', 'synced'))
+      )`,
+      "CREATE INDEX IF NOT EXISTS idx_beers_active_name ON beers(deleted_at, name)",
+      "CREATE INDEX IF NOT EXISTS idx_beers_active_category ON beers(deleted_at, category)",
+      "CREATE INDEX IF NOT EXISTS idx_beers_active_country ON beers(deleted_at, country_code)",
+      `CREATE TABLE IF NOT EXISTS beer_categories (
+        id TEXT PRIMARY KEY NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+      `CREATE TABLE IF NOT EXISTS beer_styles (
+        id TEXT PRIMARY KEY NOT NULL,
+        category_code TEXT NOT NULL,
+        name TEXT NOT NULL,
+        normalized_name TEXT NOT NULL UNIQUE,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (category_code) REFERENCES beer_categories(code)
+      )`,
+      `CREATE TABLE IF NOT EXISTS flavor_tags (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        normalized_name TEXT NOT NULL UNIQUE,
+        category TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT
+      )`,
+      `CREATE TABLE IF NOT EXISTS beer_flavor_tags (
+        beer_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (beer_id, tag_id),
+        FOREIGN KEY (beer_id) REFERENCES beers(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES flavor_tags(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS tastings (
+        id TEXT PRIMARY KEY NOT NULL,
+        beer_id TEXT NOT NULL,
+        tasted_at TEXT NOT NULL,
+        drinking_location TEXT NOT NULL DEFAULT '',
+        capacity_ml INTEGER,
+        bottle_count_scaled INTEGER,
+        purchase_channel TEXT NOT NULL DEFAULT '',
+        price_minor INTEGER,
+        overall_rating_scaled INTEGER,
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        deleted_at TEXT,
+        sync_status TEXT NOT NULL DEFAULT 'local',
+        revision INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (beer_id) REFERENCES beers(id) ON DELETE RESTRICT
+      )`,
+      `CREATE TABLE IF NOT EXISTS photos (
+        id TEXT PRIMARY KEY NOT NULL,
+        beer_id TEXT,
+        tasting_id TEXT,
+        local_path TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        mime_type TEXT NOT NULL DEFAULT '',
+        width INTEGER,
+        height INTEGER,
+        byte_size INTEGER,
+        checksum_sha256 TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        sync_status TEXT NOT NULL DEFAULT 'local',
+        revision INTEGER NOT NULL DEFAULT 1,
+        CHECK ((beer_id IS NOT NULL) <> (tasting_id IS NOT NULL)),
+        FOREIGN KEY (beer_id) REFERENCES beers(id) ON DELETE CASCADE,
+        FOREIGN KEY (tasting_id) REFERENCES tastings(id) ON DELETE CASCADE
+      )`,
+      `CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY NOT NULL,
+        value TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )`,
+    ],
+  },
+];
+
+export const REQUIRED_TABLES = [
+  "schema_migrations",
+  "beers",
+  "beer_categories",
+  "beer_styles",
+  "flavor_tags",
+  "beer_flavor_tags",
+  "tastings",
+  "photos",
+  "settings",
+];
