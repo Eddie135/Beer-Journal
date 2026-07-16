@@ -327,3 +327,12 @@ Capacitor Android APK
 - `mobile/web/assets/database.js` 统一管理稳定数据库名、连接初始化、schema 版本和事务迁移；页面不直接执行 SQL。
 - `mobile/web/assets/beer-repository.js` 提供 Beer 的创建、查询、搜索、筛选、更新和软删除；所有写入维护 `updated_at`、`revision` 和 `sync_status`。
 - v1.0 使用本地内置 Web 资源和 Android 原生 SQLite；浏览器预览环境没有 SQLite 插件时必须显示明确错误，不使用 `localStorage` 伪装数据库。
+## v1.0 L3 本地饮用记录
+
+### L3 bridge build correction
+
+The mobile web shell is now built with Vite (`mobile/web` to `mobile/dist`) before Capacitor sync. `capacitor.config.json` uses `dist` as `webDir`. SQLite is imported from `@capacitor-community/sqlite` at build time; Android does not use a global plugin lookup or call `initWebStore`. The native Android module remains the Capacitor-synced `capacitor-community-sqlite` plugin.
+
+SQLite 初始化在取得 `SQLiteDBConnection` 之后才检查 `db.isDBOpen()`：先执行 `checkConnectionsConsistency` 和 `isConnection`，再按结果 `retrieveConnection` 或 `createConnection`，然后执行 `db.isDBOpen`、必要时 `db.open`，最后读取 schema 并迁移。首次启动不存在连接属于正常创建路径；单例 Promise 防止并发创建，失败会允许后续重试，不删除本地数据库文件。
+
+SQLite schema version 2 在保留 version 1 Beer 数据的前提下，为已有 `tastings` 表增加稳定的本地字段和索引。`TastingRepository` 负责所有饮用记录读写、软删除和统计查询；页面不直接执行 SQL。此阶段仍不连接 Django、生产服务器或照片存储。

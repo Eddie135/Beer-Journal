@@ -537,6 +537,8 @@ Codex 随后应验证 Git、Docker 与 Docker Compose，而不是让用户自行
 
 ### L3：Tasting、标签、分类和国家选择
 
+L3 bridge 修复增加 Vite 构建链：先生成 `mobile/dist`，再执行 Capacitor sync，确保 SQLite npm 代理进入 Android bundle；初始化顺序固定为连接一致性检查、连接查找/创建、取得 db 后检查打开状态、打开数据库、再执行 schema migration；不改变本地数据库、迁移或生产部署范围。
+
 - 实现 Tasting CRUD、首次品饮分步流程和 CountryPicker；
 - 复用当前中文分类、国旗和标签规则；
 - 添加本地查询测试。
@@ -562,3 +564,6 @@ v1.1 再设计服务器同步/备份、账号和多语言；v1.2 再评估统计
 - 已完成 Beer 列表、新增、详情、编辑、软删除、搜索和基础筛选；删除不会物理清除记录。
 - 已生成 `Beer-Journal-v1.0.0-beta2-debug.apk`，versionCode 为 5。
 - L2 完成后停止，不进入 Tasting、照片或备份实现；Android 真机离线验收仍需实际连接设备后执行。
+## Local-first v1.0 L3
+
+L3 已实现本地 SQLite schema 1→2 迁移、TastingRepository、饮用记录列表/新增/详情/编辑/软删除、Beer 详情历史记录、首次品饮 Action Sheet 和基础数字统计。当前仍不实现照片、备份恢复、服务器同步、账号、多语言、深色模式或 AI。

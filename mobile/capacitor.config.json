@@ -1,7 +1,7 @@
 {
   "appId": "com.mybeerjournal.app",
   "appName": "Beer Journal",
-  "webDir": "web",
+  "webDir": "dist",
   "android": {
     "backgroundColor": "#F7F7F5"
   },

@@ -610,3 +610,6 @@ L1 只记录上述设计并建立前端骨架，不创建 SQLite 表或实现 CR
 - Beer 使用稳定 UUID；v1.0 的 `remote_id`/`owner_id` 为空，创建记录 `sync_status=local`、`revision=1`，修改进入 `pending_update`，软删除进入 `pending_delete`。
 - L2 页面已接入名称/品牌/酒厂/国家/风格搜索、分类/国家/评分范围筛选，以及新增、详情、编辑和二次确认软删除。
 - 本阶段暂不实现 Tasting CRUD、照片、备份、同步和登录；相关表结构只为后续迁移预留。
+## v1.0 L3 Tasting 本地扩展
+
+Schema version 2 为 version 1 的本地 `tastings` 表增加 `consumed_at`、`location`、`volume_ml`、`bottle_count`、`price_scaled`、`rating_scaled` 和 `note`，并从旧字段安全回填。迁移使用 SQLite 事务和 `schema_migrations` 版本记录，不删除 Beer 或重建数据库；`beer_id`、`consumed_at`、`deleted_at` 均有查询索引。价格按分、评分按十分之一保存为整数。

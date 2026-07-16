@@ -1,7 +1,11 @@
 import { initializeDatabase, withTransaction } from "./database.js";
 
 const now = () => new Date().toISOString();
-const uuid = () => globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+const uuid = () => globalThis.crypto?.randomUUID?.() || "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+  const random = Math.random() * 16 | 0;
+  const value = char === "x" ? random : (random & 0x3) | 0x8;
+  return value.toString(16);
+});
 const text = (value) => String(value ?? "").trim();
 const scaled = (value, factor) => {
   if (value === "" || value === null || value === undefined) return null;
@@ -84,6 +88,7 @@ export class BeerRepository {
     }
     if (filters.category) { clauses.push("category = ?"); params.push(filters.category); }
     if (filters.country_code) { clauses.push("country_code = ?"); params.push(filters.country_code); }
+    else if (filters.country_name) { clauses.push("LOWER(country_name) = LOWER(?)"); params.push(text(filters.country_name)); }
     if (filters.min_rating !== "" && filters.min_rating !== undefined) { clauses.push("overall_rating_scaled >= ?"); params.push(Number(filters.min_rating) * 10); }
     if (filters.max_rating !== "" && filters.max_rating !== undefined) { clauses.push("overall_rating_scaled <= ?"); params.push(Number(filters.max_rating) * 10); }
     const result = await db.query(`SELECT * FROM beers WHERE ${clauses.join(" AND ")} ORDER BY name COLLATE NOCASE, created_at DESC`, params);

@@ -1,5 +1,5 @@
 export const DB_NAME = "beer_journal";
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export const MIGRATIONS = [
   {
@@ -120,6 +120,28 @@ export const MIGRATIONS = [
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )`,
+    ],
+  },
+  {
+    version: 2,
+    statements: [
+      "ALTER TABLE tastings ADD COLUMN consumed_at TEXT",
+      "ALTER TABLE tastings ADD COLUMN location TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE tastings ADD COLUMN volume_ml INTEGER",
+      "ALTER TABLE tastings ADD COLUMN bottle_count INTEGER",
+      "ALTER TABLE tastings ADD COLUMN price_scaled INTEGER",
+      "ALTER TABLE tastings ADD COLUMN rating_scaled INTEGER",
+      "ALTER TABLE tastings ADD COLUMN note TEXT NOT NULL DEFAULT ''",
+      "UPDATE tastings SET consumed_at = tasted_at WHERE consumed_at IS NULL",
+      "UPDATE tastings SET location = drinking_location WHERE location = '' AND drinking_location IS NOT NULL",
+      "UPDATE tastings SET volume_ml = capacity_ml WHERE volume_ml IS NULL",
+      "UPDATE tastings SET bottle_count = bottle_count_scaled WHERE bottle_count IS NULL",
+      "UPDATE tastings SET price_scaled = price_minor WHERE price_scaled IS NULL",
+      "UPDATE tastings SET rating_scaled = overall_rating_scaled WHERE rating_scaled IS NULL",
+      "UPDATE tastings SET note = notes WHERE note = '' AND notes IS NOT NULL",
+      "CREATE INDEX IF NOT EXISTS idx_tastings_beer_active ON tastings(beer_id, deleted_at, consumed_at)",
+      "CREATE INDEX IF NOT EXISTS idx_tastings_consumed_at ON tastings(consumed_at)",
+      "CREATE INDEX IF NOT EXISTS idx_tastings_deleted_at ON tastings(deleted_at)",
     ],
   },
 ];
