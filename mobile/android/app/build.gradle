@@ -7,7 +7,7 @@ android {
         applicationId "com.mybeerjournal.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 14
+        versionCode 15
         versionName "1.0.0-beta3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -27,7 +27,7 @@ android {
 android.applicationVariants.all { variant ->
     if (variant.name == "debug") {
         variant.outputs.all { output ->
-        output.outputFileName = "Beer-Journal-v1.0.0-beta3-ratingfix-debug.apk"
+        output.outputFileName = "Beer-Journal-v1.0.0-beta3-ratingstylefix-debug.apk"
         }
     }
 }

@@ -11,8 +11,8 @@ const appShell = document.querySelector("[data-app-shell]");
 const appLogo = document.querySelector("#app-logo");
 const bottomNavigation = document.querySelector("[data-app-bottom-nav]");
 const HOME = "/beers";
-const BUILD_LABEL = "beta3-ratingfix";
-const BUILD_VERSION_CODE = 14;
+const BUILD_LABEL = "beta3-ratingstylefix";
+const BUILD_VERSION_CODE = 15;
 const CATEGORIES = ["拉格", "艾尔"];
 const STYLES = {
   拉格: ["皮尔森", "淡色拉格", "黑拉格"],

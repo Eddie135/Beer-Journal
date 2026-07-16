@@ -50,3 +50,12 @@ test("Beer add/edit pages use the component and Beer details use the same values
   assert.match(appSource, /beerRepository\.createBeer\(payload\)/);
   assert.match(appSource, /beerRepository\.updateBeer\(form\.dataset\.beerId, payload\)/);
 });
+
+test("FiveOptionRating uses amber touch feedback and keeps the native radio semantic", async () => {
+  const css = await readFile(new URL("../web/assets/local.css", import.meta.url), "utf8");
+  assert.match(css, /five-option-rating__option[^\n]*-webkit-tap-highlight-color:\s*transparent/);
+  assert.match(css, /five-option-rating__option:active span[^\{]*\{[^}]*background:\s*#fff0d8/);
+  assert.match(css, /input:checked \+ span[^\{]*\{[^}]*background:\s*#f4a340/);
+  assert.match(css, /input:focus-visible \+ span[^\{]*\{[^}]*outline:\s*2px solid #f4a340/);
+  assert.doesNotMatch(css, /five-option-rating__option input[^\n]*display:\s*none/);
+});
