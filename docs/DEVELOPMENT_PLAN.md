@@ -567,3 +567,22 @@ v1.1 再设计服务器同步/备份、账号和多语言；v1.2 再评估统计
 ## Local-first v1.0 L3
 
 L3 已实现本地 SQLite schema 1→2 迁移、TastingRepository、饮用记录列表/新增/详情/编辑/软删除、Beer 详情历史记录、首次品饮 Action Sheet 和基础数字统计。当前仍不实现照片、备份恢复、服务器同步、账号、多语言、深色模式或 AI。
+# Local-first v1.0 执行补充（2026-07-17）
+
+当前开发目标不再按 beta4 单点问题反复发布 APK，而是一次完成本地优先 v1.0 的功能闭环。详细范围见 `docs/V1_SCOPE.md`。
+
+## v1.0 批次
+
+1. Schema 3 → 4：照片元数据、缩略图、封面、软删除和索引；保留所有 Beer、Tasting、标签及关系数据。
+2. Beer/Tasting 完整本地 CRUD：首次品饮选择、再次品饮、编辑、软删除和回收站恢复。
+3. 照片：相册/相机、多图预览、WebP 压缩、缩略图、封面、删除和离线持久化。
+4. 搜索、组合筛选、标签 AND/OR、评分范围、照片存在性和排序。
+5. 个人数据中心：数量、容量、国家/品牌/酒厂/风格分布、评分、花费和月度趋势。
+6. 单文件备份与恢复：校验 Schema、事务导入、UUID 去重、失败回滚和清空确认。
+7. 统一 UI 与 Android 体验：固定 App Shell、Overlay Manager、CountryPicker、FiveOptionRating、返回键、Safe Area 和离线错误提示。
+
+## v1.0 完成门禁
+
+- Node 全量测试、JavaScript 检查、Schema 迁移检查、Vite production build 和 Playwright 三视口回归通过。
+- 内部包 `com.mybeerjournal.app.v1test` 在真实设备完成 Schema 4、Beer/Tasting/标签/照片/筛选/备份恢复/强制停止/覆盖升级验收。
+- 只在全部门禁通过后生成一次 `Beer-Journal-v1.0.0-rc1.apk`；不连接生产服务器，不提交任何中间 APK。

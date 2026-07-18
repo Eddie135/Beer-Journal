@@ -59,6 +59,7 @@ a { color: inherit; }
 .local-filter-button { padding: 0 14px; background: #fff; color: var(--local-ink); box-shadow: var(--local-shadow); }
 .local-filter-summary { display: flex; flex-wrap: wrap; gap: 7px; min-height: 8px; margin-top: 10px; }
 .local-filter-summary span, .local-beer-meta span { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 10px; border-radius: 999px; background: #fff3df; color: var(--local-ink); font-size: .76rem; font-weight: 750; }
+.local-filter-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 5px 10px; border: 0; border-radius: 999px; background: #fff0d8; color: #8d570e; font: inherit; font-size: .76rem; font-weight: 750; }
 .local-beer-list { display: grid; gap: 13px; margin-top: 16px; }
 .local-beer-card { display: block; padding: 19px; border-radius: var(--local-radius); background: #fff; box-shadow: var(--local-shadow); text-decoration: none; transition: transform .2s ease, box-shadow .2s ease; }
 .local-beer-card:active { transform: scale(.985); box-shadow: 0 4px 18px rgba(0,0,0,.08); }
@@ -107,7 +108,71 @@ body.local-overlay-open .local-bottom-nav { pointer-events: none; }
 .local-country-custom span { grid-row: span 2; font-size: 1.5rem; }
 .local-country-custom strong { font-size: .96rem; }
 .local-country-custom small { color: var(--local-muted); }
+/* Nested pickers must sit above the filter portal and receive touch input. */
+.local-country-picker, .local-choice-picker { position: fixed; z-index: 1100; inset: 0; pointer-events: auto; }
 @media (max-width: 430px) { .local-form-grid, .local-range { grid-template-columns: 1fr; } .local-search-form button { padding: 0 12px; } }
+
+/* Filter Sheet: the backdrop and sheet sit above the app navigation. */
+.filter-overlay-root { position: fixed; z-index: 100; inset: 0; pointer-events: none; isolation: isolate; }
+.filter-overlay-root:not(.is-open) { display: none; }
+.filter-overlay-root .local-sheet-overlay { z-index: 0; pointer-events: auto; }
+.filter-overlay-root .filter-sheet { z-index: 1; pointer-events: auto; right: 0; bottom: 0; left: 0; width: min(100%, 720px); height: min(calc(100dvh - env(safe-area-inset-top) - 12px), 88dvh); max-height: calc(100dvh - env(safe-area-inset-top) - 12px); margin: 0 auto; padding: 0 18px; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.filter-sheet__header { flex: 0 0 auto; min-height: 68px; margin: 0; padding: 12px 0 10px; padding-top: max(12px, env(safe-area-inset-top)); background: #fff; }
+.filter-sheet__body { min-height: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 4px 0 24px; }
+.filter-section { display: grid; gap: 10px; min-width: 0; }
+.filter-section h3 { margin: 0; color: var(--local-ink); font-size: .88rem; line-height: 1.25; }
+.filter-section .local-choice-grid { margin: 0; }
+.filter-section .local-picker-trigger { margin: 0; }
+.filter-rating-input { width: 100%; min-height: 48px; border: 0; border-radius: 15px; padding: 0 13px; background: #f7f7f5; color: var(--local-ink); font: inherit; outline: 0; }
+.filter-sheet__footer { flex: 0 0 auto; padding: 10px 0 calc(16px + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -8px 18px rgba(24,25,27,.06); }
+.filter-sheet__footer .local-actions { margin-top: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.filter-sheet__footer .local-button { width: 100%; }
+.filter-empty-tags { grid-column: 1 / -1; margin: 4px 0; padding: 14px; border-radius: 14px; background: #fafaf8; color: var(--local-muted); font-size: .82rem; font-weight: 600; text-align: center; }
+body.local-overlay-open { overflow: hidden; overscroll-behavior: none; }
+body.local-overlay-open .local-route-content { pointer-events: none; overscroll-behavior: none; }
+body.local-overlay-open .local-bottom-nav { z-index: 20; pointer-events: none; }
+
+/* The filter portal is a direct body child, so no route animation or shell
+   stacking context can clip the backdrop or place the navigation above it. */
+#overlay-root.filter-overlay-root { position: fixed; z-index: 1000; inset: 0; display: block; pointer-events: none; isolation: isolate; }
+#overlay-root.filter-overlay-root:not(.is-open) { display: none; }
+#overlay-root.filter-overlay-root.is-open { pointer-events: auto; }
+#overlay-root.filter-overlay-root > .local-sheet-overlay { position: absolute; z-index: 0; inset: 0; pointer-events: auto; }
+#overlay-root.filter-overlay-root > .filter-sheet { position: absolute; z-index: 1; right: 0; bottom: 0; left: 0; width: min(100%, 720px); height: min(calc(100dvh - env(safe-area-inset-top) - 12px), 88dvh); max-height: calc(100dvh - env(safe-area-inset-top) - 12px); margin: 0 auto; pointer-events: auto; }
+/* app.css still contains the legacy web filter-sheet animation.  Explicitly
+   neutralize it for the local portal; only the backdrop may blur the page. */
+#overlay-root.filter-overlay-root > .filter-sheet {
+  top: auto;
+  display: flex;
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  clip-path: none;
+  mask: none;
+  -webkit-mask: none;
+  contain: none;
+  isolation: isolate;
+  overflow: hidden;
+  animation: none;
+  transition: none;
+  background: #fff;
+  color: var(--local-ink);
+  pointer-events: auto;
+}
+#overlay-root.filter-overlay-root > .filter-sheet::before,
+#overlay-root.filter-overlay-root > .filter-sheet::after { content: none; display: none; }
+#overlay-root.filter-overlay-root > .local-sheet-overlay {
+  filter: none;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+}
 @media (max-width: 430px) { .local-card { padding: 18px; } .local-stat-grid { gap: 7px; } }
 
 .five-option-rating-grid { display: grid; gap: 15px; }
@@ -132,3 +197,111 @@ body.local-overlay-open .local-bottom-nav { pointer-events: none; }
 .five-option-rating-summary strong { font-size: .82rem; }
 .five-option-rating-summary span { color: var(--local-muted); font-size: .7rem; text-align: center; }
 .five-option-rating-summary b { color: #b67010; font-size: .95rem; letter-spacing: .04em; text-align: center; white-space: nowrap; }
+
+.local-tag-list { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.local-tag-pill { display: inline-flex; align-items: center; gap: 4px; min-height: 28px; padding: 4px 9px; border-radius: 999px; background: #fff0d8; color: #8d570e; font-size: .76rem; font-weight: 750; }
+.local-tag-pill button { width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: inherit; font: inherit; line-height: 1; }
+.local-tag-editor { display: grid; gap: 8px; }
+.local-tag-editor > label { color: var(--local-muted); font-size: .82rem; font-weight: 750; }
+.local-tag-chips { display: flex; flex-wrap: wrap; gap: 7px; min-height: 8px; }
+.local-tag-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.local-tag-entry .local-button { min-height: 48px; padding: 0 16px; }
+.local-tag-suggestions { display: grid; gap: 5px; padding: 7px; border-radius: 14px; background: #fafaf8; }
+.local-tag-suggestions button { min-height: 40px; border: 0; border-radius: 10px; background: #fff; color: var(--local-ink); text-align: left; font: inherit; }
+.local-tag-filter { display: grid; gap: 8px; margin-top: 15px; color: var(--local-muted); font-size: .82rem; font-weight: 750; }
+
+/* Local-first v1.0 pages */
+.local-page-heading { margin-bottom: 16px; }
+.collection-overview { display: grid; gap: 4px; margin-top: 4px; }
+.collection-overview strong { font-size: 2.1rem; letter-spacing: -.06em; }
+.collection-overview small { color: var(--local-muted); }
+.local-search { display: grid; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 6px; min-height: 52px; margin-top: 16px; padding: 0 6px 0 14px; border-radius: 17px; background: #fff; box-shadow: var(--local-shadow); }
+.local-search input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--local-ink); font: inherit; }
+.local-search button { min-height: 42px; padding: 0 14px; border: 0; border-radius: 13px; background: var(--local-ink); color: #fff; font: inherit; font-weight: 750; }
+.filter-entry-card { width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: space-between; margin-top: 12px; padding: 0 18px; border: 0; border-radius: 18px; background: #fff; box-shadow: var(--local-shadow); color: var(--local-ink); font: inherit; font-weight: 800; }
+.filter-entry-card span:last-child { font-size: 1.8rem; color: var(--local-muted); }
+.beer-card-list { display: grid; gap: 16px; margin-top: 16px; }
+.beer-card-media { min-height: 150px; overflow: hidden; border-radius: 20px; background: linear-gradient(135deg,#fff5e6,#f7f7f5); }
+.beer-card-media img, .detail-hero > img { width: 100%; height: 100%; min-height: 150px; display: block; object-fit: cover; opacity: 0; transition: opacity .22s ease; }
+.beer-card-media img.is-loaded, .detail-hero > img.is-loaded { opacity: 1; }
+.beer-placeholder, .detail-placeholder { display: grid; place-items: center; min-height: 150px; color: var(--local-accent); font-size: 3.5rem; }
+.local-beer-card { padding: 12px; overflow: hidden; }
+.beer-card-body { padding: 8px 7px 4px; }
+.beer-card-country { color: var(--local-muted); font-size: .78rem; font-weight: 750; }
+.beer-card-body h2 { margin: 8px 0 4px; overflow-wrap: anywhere; }
+.beer-card-body p { margin: 0; color: var(--local-muted); }
+.beer-card-rating { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; }
+.beer-card-rating strong { color: #b67010; font-size: 1.35rem; }
+.beer-card-rating span { color: #b67010; font-size: .76rem; }
+.status-pill { padding: 4px 8px; border-radius: 999px; background: #e9f8ef; color: #278552; font-size: .7rem; }
+.fab { position: fixed; z-index: 25; right: 22px; bottom: calc(92px + env(safe-area-inset-bottom)); display: grid; place-items: center; width: 58px; height: 58px; border: 0; border-radius: 50%; background: var(--local-ink); color: #fff; box-shadow: 0 12px 25px rgba(24,25,27,.25); font-size: 2rem; text-decoration: none; }
+.detail-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.detail-actions .local-back-button { margin-right: auto; }
+.local-back-button { min-height: 44px; border: 0; background: transparent; color: var(--local-muted); font: inherit; font-weight: 750; }
+.detail-hero { overflow: hidden; padding: 0 0 22px; }
+.detail-hero > img, .detail-placeholder { min-height: 250px; max-height: 380px; }
+.detail-hero > :not(img):not(.detail-placeholder) { margin-left: 22px; margin-right: 22px; }
+.detail-hero .beer-card-country { margin-top: 18px; }
+.detail-hero h1 { margin-top: 8px; font-size: 2rem; overflow-wrap: anywhere; }
+.detail-hero p { margin: 4px 0; color: var(--local-muted); }
+.stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+.stat-grid span { display: grid; gap: 3px; color: var(--local-muted); font-size: .78rem; }
+.stat-grid b { color: var(--local-ink); font-size: 1rem; overflow-wrap: anywhere; }
+.experience-card { display: grid; gap: 12px; }
+.basic-info p { color: var(--local-muted); line-height: 1.6; }
+.photo-section { display: grid; gap: 12px; margin-top: 18px; }
+.photo-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+.photo-item { position: relative; min-height: 92px; margin: 0; overflow: hidden; border-radius: 14px; background: #f7f7f5; }
+.photo-item img { width: 100%; height: 100%; min-height: 92px; display: block; object-fit: cover; user-select: none; -webkit-touch-callout: none; }
+.photo-item figcaption { position: absolute; right: 0; bottom: 0; left: 0; padding: 4px; background: rgba(0,0,0,.5); color: #fff; font-size: .68rem; text-align: center; }
+.photo-delete { position: absolute; right: 4px; top: 4px; min-height: 28px; padding: 3px 7px; border: 0; border-radius: 8px; background: rgba(24,25,27,.72); color: #fff; font: inherit; font-size: .68rem; }
+.photo-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.photo-upload-card { display: grid; justify-items: center; gap: 2px; min-width: 120px; min-height: 90px; padding: 10px; border-radius: 16px; background: #fff8ed; color: #9b6115; text-align: center; cursor: pointer; }
+.photo-upload-card span { font-size: 1.8rem; line-height: 1; }
+.photo-upload-card small { color: var(--local-muted); }
+.local-form { display: grid; gap: 16px; }
+.local-form label { display: grid; gap: 7px; color: var(--local-muted); font-size: .84rem; font-weight: 750; }
+.local-form input, .local-form textarea, .local-form select { width: 100%; min-height: 50px; border: 0; border-radius: 16px; padding: 13px; background: #fafaf8; color: var(--local-ink); font: inherit; outline: 0; }
+.local-form textarea { resize: vertical; }
+.local-form input:focus, .local-form textarea:focus, .local-form select:focus { box-shadow: 0 0 0 3px rgba(244,163,64,.24); }
+.form-topbar { display: flex; align-items: center; gap: 10px; margin-bottom: 2px; }
+.form-topbar h1 { margin: 0; font-size: 1.65rem; }
+.form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+.selected-beer { display: grid; gap: 4px; margin: 0; }
+.selected-beer span { color: var(--local-muted); }
+.tasting-timeline { display: grid; gap: 12px; margin-top: 16px; }
+.tasting-card { display: grid; gap: 8px; padding: 18px; text-decoration: none; }
+.tasting-card h2 { margin: 0; font-size: 1.15rem; overflow-wrap: anywhere; }
+.tasting-card p { margin: 0; color: var(--local-muted); line-height: 1.5; }
+.tasting-card-date { color: var(--local-muted); font-size: .78rem; }
+.tasting-meta { display: flex; align-items: center; gap: 10px; color: var(--local-muted); font-size: .8rem; }
+.tasting-meta strong { margin-left: auto; color: #b67010; font-size: 1.15rem; }
+.tasting-meta button { width: 38px; height: 38px; border: 0; border-radius: 50%; background: #f7f7f5; color: var(--local-muted); }
+.journal-stats, .profile-numbers { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 14px; }
+.journal-stats div, .profile-numbers div { display: grid; gap: 4px; padding: 14px 8px; border-radius: 16px; background: #fff; text-align: center; box-shadow: var(--local-shadow); }
+.journal-stats strong, .profile-numbers strong { font-size: 1.45rem; letter-spacing: -.05em; }
+.journal-stats span, .profile-numbers small { color: var(--local-muted); font-size: .72rem; }
+.period-tabs { display: flex; gap: 7px; margin-top: 16px; overflow-x: auto; }
+.period-tabs button { min-height: 42px; padding: 0 14px; border: 0; border-radius: 999px; background: #fff; color: var(--local-muted); font: inherit; white-space: nowrap; }
+.period-tabs button.is-selected { background: var(--local-accent); color: var(--local-ink); }
+.profile-hero { display: grid; gap: 10px; padding: 24px; background: linear-gradient(135deg,#fff8ed,#fff); }
+.profile-hero > span { color: var(--local-muted); font-weight: 750; }
+.profile-hero > .profile-numbers { margin-top: 0; }
+.bar-chart { display: grid; gap: 10px; margin-top: 14px; }
+.bar-chart > div { display: grid; grid-template-columns: 100px minmax(0,1fr) 28px; gap: 8px; align-items: center; font-size: .78rem; }
+.bar-chart i { display: block; height: 12px; width: var(--bar); min-width: 6px; border-radius: 999px; background: var(--local-accent); }
+.bar-chart b { color: var(--local-muted); text-align: right; }
+.data-management { display: grid; gap: 10px; }
+.beer-select-list { display: grid; gap: 10px; margin-top: 16px; }
+.beer-select-card { display: grid; grid-template-columns: 28px 1fr; align-items: center; gap: 10px; min-height: 72px; padding: 12px 14px; border-radius: 17px; background: #fff; box-shadow: var(--local-shadow); }
+.beer-select-card input { width: 20px; height: 20px; accent-color: var(--local-accent); }
+.beer-select-card span { display: grid; gap: 4px; min-width: 0; }
+.beer-select-card strong { overflow-wrap: anywhere; }
+.beer-select-card small { color: var(--local-muted); overflow-wrap: anywhere; }
+.select-beer-page > h1 { margin: 8px 0; }
+.trash-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(24,25,27,.08); }
+.trash-row button { min-height: 40px; border: 0; border-radius: 12px; padding: 0 12px; background: #fff0d8; color: #8d570e; font: inherit; font-weight: 750; }
+.local-muted { color: var(--local-muted); }
+.tasting-note { margin-top: 18px; padding: 16px; border-radius: 16px; background: #fafaf8; color: var(--local-ink); line-height: 1.7; white-space: pre-wrap; }
+.filter-chip { min-height: 32px; padding: 5px 10px; border: 0; border-radius: 999px; background: #fff0d8; color: #8d570e; font: inherit; font-size: .76rem; font-weight: 750; }
+@media (max-width: 430px) { .form-grid { grid-template-columns: 1fr; } .bar-chart > div { grid-template-columns: 82px minmax(0,1fr) 24px; } }

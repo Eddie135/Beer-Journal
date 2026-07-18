@@ -1,5 +1,5 @@
 export const DB_NAME = "beer_journal";
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 4;
 
 export const MIGRATIONS = [
   {
@@ -142,6 +142,37 @@ export const MIGRATIONS = [
       "CREATE INDEX IF NOT EXISTS idx_tastings_beer_active ON tastings(beer_id, deleted_at, consumed_at)",
       "CREATE INDEX IF NOT EXISTS idx_tastings_consumed_at ON tastings(consumed_at)",
       "CREATE INDEX IF NOT EXISTS idx_tastings_deleted_at ON tastings(deleted_at)",
+    ],
+  },
+  {
+    version: 3,
+    statements: [
+      "ALTER TABLE flavor_tags ADD COLUMN remote_id TEXT",
+      "ALTER TABLE flavor_tags ADD COLUMN owner_id TEXT",
+      "ALTER TABLE flavor_tags ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'local'",
+      "ALTER TABLE flavor_tags ADD COLUMN revision INTEGER NOT NULL DEFAULT 1",
+      "ALTER TABLE beer_flavor_tags ADD COLUMN updated_at TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE beer_flavor_tags ADD COLUMN deleted_at TEXT",
+      "ALTER TABLE beer_flavor_tags ADD COLUMN sync_status TEXT NOT NULL DEFAULT 'local'",
+      "ALTER TABLE beer_flavor_tags ADD COLUMN revision INTEGER NOT NULL DEFAULT 1",
+      "CREATE INDEX IF NOT EXISTS idx_flavor_tags_active_name ON flavor_tags(deleted_at, normalized_name)",
+      "CREATE INDEX IF NOT EXISTS idx_beer_flavor_tags_beer_active ON beer_flavor_tags(beer_id, deleted_at)",
+      "CREATE INDEX IF NOT EXISTS idx_beer_flavor_tags_tag_active ON beer_flavor_tags(tag_id, deleted_at)",
+      "CREATE INDEX IF NOT EXISTS idx_beer_flavor_tags_deleted_at ON beer_flavor_tags(deleted_at)",
+    ],
+  },
+  {
+    version: 4,
+    statements: [
+      "ALTER TABLE photos ADD COLUMN thumbnail_path TEXT NOT NULL DEFAULT ''",
+      "ALTER TABLE photos ADD COLUMN deleted_at TEXT",
+      "ALTER TABLE photos ADD COLUMN remote_id TEXT",
+      "ALTER TABLE photos ADD COLUMN owner_id TEXT",
+      "ALTER TABLE photos ADD COLUMN is_cover INTEGER NOT NULL DEFAULT 0",
+      "CREATE INDEX IF NOT EXISTS idx_photos_beer_active_order ON photos(beer_id, deleted_at, sort_order)",
+      "CREATE INDEX IF NOT EXISTS idx_photos_tasting_active_order ON photos(tasting_id, deleted_at, sort_order)",
+      "CREATE INDEX IF NOT EXISTS idx_photos_deleted_at ON photos(deleted_at)",
+      "CREATE INDEX IF NOT EXISTS idx_tastings_beer_consumed_active ON tastings(beer_id, deleted_at, consumed_at)",
     ],
   },
 ];

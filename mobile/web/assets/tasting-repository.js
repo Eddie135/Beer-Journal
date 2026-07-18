@@ -95,7 +95,7 @@ export class TastingRepository {
 
   async listTastings(filters = {}) {
     const { db } = await initializeDatabase();
-    const clauses = ["t.deleted_at IS NULL", "b.deleted_at IS NULL"];
+    const clauses = [filters.includeDeleted ? "1 = 1" : "t.deleted_at IS NULL", filters.includeDeleted ? "1 = 1" : "b.deleted_at IS NULL"];
     const params = [];
     const query = text(filters.query);
     if (query) {
@@ -108,11 +108,12 @@ export class TastingRepository {
     if (filters.to) { clauses.push("t.consumed_at <= ?"); params.push(filters.to); }
     if (filters.min_rating !== "" && filters.min_rating !== undefined) { clauses.push("t.rating_scaled >= ?"); params.push(Number(filters.min_rating) * 10); }
     if (filters.max_rating !== "" && filters.max_rating !== undefined) { clauses.push("t.rating_scaled <= ?"); params.push(Number(filters.max_rating) * 10); }
+    const order = filters.order === "oldest" ? "t.consumed_at ASC, t.created_at ASC" : "t.consumed_at DESC, t.created_at DESC";
     const result = await db.query(`SELECT t.*, b.name AS beer_name, b.brand AS beer_brand,
       b.country_code AS beer_country_code, b.country_name AS beer_country_name,
       b.style AS beer_style, b.category AS beer_category
       FROM tastings t JOIN beers b ON b.id = t.beer_id
-      WHERE ${clauses.join(" AND ")} ORDER BY t.consumed_at DESC, t.created_at DESC`, params);
+      WHERE ${clauses.join(" AND ")} ORDER BY ${order}`, params);
     return (result.values || []).map(mapRow);
   }
 
@@ -149,6 +150,15 @@ export class TastingRepository {
     return this.getTastingById(id);
   }
 
+  async restoreTasting(id) {
+    const timestamp = now();
+    await withTransaction((db) => db.run(
+      "UPDATE tastings SET deleted_at = NULL, updated_at = ?, sync_status = 'pending_update', revision = revision + 1 WHERE id = ?",
+      [timestamp, id], false,
+    ));
+    return this.getTastingById(id);
+  }
+
   async getStats() {
     const { db } = await initializeDatabase();
     const result = await db.query(`SELECT COUNT(*) AS tasting_count,
@@ -168,6 +178,8 @@ export class TastingRepository {
       FROM tastings WHERE beer_id = ? AND deleted_at IS NULL`, [beerId]);
     return result.values?.[0] || { tasting_count: 0, bottle_count: 0, latest_consumed_at: null, average_rating_scaled: null };
   }
+
+  async listDeletedTastings() { return this.listTastings({ includeDeleted: true }); }
 }
 
 export const tastingRepository = new TastingRepository();

@@ -3,12 +3,14 @@ apply plugin: 'com.android.application'
 android {
     namespace = "com.mybeerjournal.app"
     compileSdk = rootProject.ext.compileSdkVersion
+    def v1Test = project.findProperty("v1Test") == "true"
+    def resolvedApplicationId = v1Test ? "com.mybeerjournal.app.v1test" : "com.mybeerjournal.app"
     defaultConfig {
-        applicationId "com.mybeerjournal.app"
+        applicationId resolvedApplicationId
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 15
-        versionName "1.0.0-beta3"
+        versionCode 22
+        versionName "1.0.0-rc1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -27,7 +29,9 @@ android {
 android.applicationVariants.all { variant ->
     if (variant.name == "debug") {
         variant.outputs.all { output ->
-        output.outputFileName = "Beer-Journal-v1.0.0-beta3-ratingstylefix-debug.apk"
+        output.outputFileName = project.findProperty("v1Test") == "true"
+            ? "Beer-Journal-v1.0.0-rc1-v1test-debug.apk"
+            : "Beer-Journal-v1.0.0-rc1.apk"
         }
     }
 }

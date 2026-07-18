@@ -16,6 +16,14 @@ export function readRoute(location, home = "/beers") {
   return normalized === "/" || normalized === "/index.html" ? home : normalized;
 }
 
+export function readRouteWithQuery(location, home = "/beers") {
+  const hash = String(location?.hash ?? "");
+  const raw = hash ? hash.slice(1) : `${String(location?.pathname ?? "")}${String(location?.search ?? "")}`;
+  const path = readRoute(location, home);
+  const queryIndex = raw.indexOf("?");
+  return queryIndex >= 0 ? `${path}${raw.slice(queryIndex)}` : path;
+}
+
 export function parseBeerDetailRoute(path) {
   const match = normalizeRoute(path).match(/^\/beers\/([^/]+)$/i);
   return match && BEER_ID_PATTERN.test(match[1]) ? match[1] : null;

@@ -1,19 +1,26 @@
-# BEER JOURNAL
+# Beer Journal
 
-BEER JOURNAL 是一个仅供个人使用的中文啤酒记录应用。它将分别保存“啤酒基本资料”和“每次品饮记录”，并计划提供多图上传、多维评分、标签、组合筛选、统计、导出、备份以及可安装到手机主屏幕的 PWA 体验。完成后将通过 Docker 部署到个人 Debian 13 服务器，数据和照片默认不交给第三方。
+Beer Journal 是一个移动优先的个人啤酒收藏应用。当前路线已调整为 Local-first v1.0：数据、照片和核心操作全部保存在 Android 设备本地，离线也可以使用，不连接生产 Django 服务。
 
 ## 当前状态
 
-- 已完成 v2/v3 移动端体验重构、v4 PWA、生产 HTTPS 与单用户登录保护；核心录入、图片、编辑、软删除与再次品饮流程保持可用。
-- 产品需求、技术架构、数据库设计、开发计划和长期协作规则已写入 `docs/` 与 `AGENTS.md`。
-- 已建立 BeerCategory → BeerStyle → Beer 两级分类关系；分类显示为“拉格/艾尔”，内部稳定代码不变，并移除旧的泛称小类 “Lager”（已有关联安全迁移为“淡色拉格”）。已迁移 Plato、口感、容量、饮用瓶数和购买渠道；历史评分、品饮标签和软删除数据保持兼容。
-- 既有 Beer、Tasting、评分、标签、照片及品牌/酒厂流程继续可用；未实现 Hop、Malt、库存、条码或 AI。
-- Docker Compose/PostgreSQL、Django 系统检查、迁移一致性检查和 50 个自动测试已通过；PWA 使用根路径公开 Manifest、Service Worker、离线页、版本化静态资源和 v3 啤酒杯图标。
-- 已创建 Capacitor 8 Android 工程并完成 F2.3 审计修正。产品路线现转为本地优先 v1.0：APK 使用 `mobile/web/` 内置前端和本地 SQLite，不通过 HTTPS 访问 Django；现有 Django/PostgreSQL/生产文件保留给 v1.1 同步后端。L2 已完成 Beer 本地 CRUD、搜索、筛选和软删除。
+- Capacitor 8 + Vite Android 工程。
+- SQLite 数据库 `beer_journal`，当前 Schema version 4，使用迁移升级而不是重建数据库。
+- Beer、Tasting、风味标签、搜索筛选、软删除/恢复、个人统计、照片压缩与本地备份功能已纳入 v1.0 实现范围。
+- 视觉基于现有 Beer Journal App Shell、CountryPicker、FiveOptionRating、Bottom Sheet 和 Android 返回键处理。
+- 生产 Django/PostgreSQL 代码保留给 v1.1 同步后端，不作为 v1.0 运行依赖。
+
+## 本地开发
+
+```powershell
+cd mobile
+pnpm install
+pnpm build
+pnpm test
+```
+
+Android 构建使用 Capacitor 8 与本机 Android SDK；构建产物和 APK 不应提交 Git。
 
 ## 下一步
 
-当前已完成 L1，并处于 L2 收尾：本地 SQLite 与 Beer CRUD 已完成，下一阶段才进入 Tasting、照片和备份。Android 真机飞行模式验收尚未执行。
-### Local-first v1.0 L3
-
-本阶段实现本地 SQLite schema version 2、Tasting CRUD、首次品饮流程、Beer 详情历史记录和基础统计。照片、备份、同步、账号、多语言、深色模式和 AI 仍未开始。
+RC1 源码检查点已冻结。下一阶段在独立 `feat/web-ui-direct-port` 分支上，直接迁移网页最终版本 `cf1651d` 的表现层，并仅替换 Django/HTTP 为本地适配层；迁移完成前不生成中间 APK。账号、服务器同步、多语言和深色模式属于 v1.1。

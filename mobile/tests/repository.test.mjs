@@ -38,6 +38,7 @@ class FakeDatabase {
       const active = this.tastings.filter((item) => item.deleted_at === null);
       return { values: [{ tasting_count: active.length, bottle_count: active.reduce((sum, item) => sum + item.bottle_count, 0), average_rating_scaled: active.length ? active.reduce((sum, item) => sum + (item.rating_scaled || 0), 0) / active.length : null }] };
     }
+    if (statement.includes("FROM beer_flavor_tags")) return { values: [] };
     if (statement.includes("SELECT * FROM beers WHERE id")) return { values: this.rows.filter((row) => row.id === values[0]) };
     return { values: this.rows.filter((row) => row.deleted_at === null) };
   }

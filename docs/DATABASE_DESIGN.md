@@ -613,3 +613,8 @@ L1 只记录上述设计并建立前端骨架，不创建 SQLite 表或实现 CR
 ## v1.0 L3 Tasting 本地扩展
 
 Schema version 2 为 version 1 的本地 `tastings` 表增加 `consumed_at`、`location`、`volume_ml`、`bottle_count`、`price_scaled`、`rating_scaled` 和 `note`，并从旧字段安全回填。迁移使用 SQLite 事务和 `schema_migrations` 版本记录，不删除 Beer 或重建数据库；`beer_id`、`consumed_at`、`deleted_at` 均有查询索引。价格按分、评分按十分之一保存为整数。
+## Local-first v1.0 SQLite Schema 4（2026-07-17）
+
+本地 APK 使用固定数据库名 `beer_journal` 和迁移版本 4。Schema 4 在保留 Beer、Tasting、标签关系的基础上，为 `photos` 增加缩略图、软删除、封面标记和同步预留字段，并建立 Beer/Tasting/删除状态索引。迁移只允许事务化升级，不删除或重建已有数据库。
+
+照片文件存放在 App 私有文件目录，SQLite 仅保存相对路径和元数据。上传时限制尺寸和大小并重新编码；照片、Beer、Tasting、标签均通过 Repository 访问，页面不得直接执行 SQL。备份为单个 JSON 文件并包含 schema 版本与照片文件，导入使用 UUID 幂等写入和失败回滚。

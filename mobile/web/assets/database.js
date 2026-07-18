@@ -18,7 +18,10 @@ let diagnostics = {
   error: "",
 };
 
-function sqliteBridge() {
+async function sqliteBridge() {
+  if (typeof import.meta.env !== "undefined" && import.meta.env.MODE === "test" && !globalThis.__BEER_JOURNAL_SQLITE_TEST_BRIDGE__) {
+    await import("./test-mode-bridge.mjs");
+  }
   // This adapter is used only by the Node repository tests. Android always
   // uses the npm-imported Capacitor bridge below.
   return globalThis.__BEER_JOURNAL_SQLITE_TEST_BRIDGE__ || {
@@ -57,13 +60,17 @@ function isMissingConnectionError(error) {
 }
 
 async function migrationStatements(db, migration) {
-  if (migration.version !== 2) return migration.statements;
   try {
-    const result = await db.query("PRAGMA table_info(tastings)");
-    const columns = new Set((result.values || []).map((row) => row.name).filter(Boolean));
+    const tables = new Map();
+    for (const statement of migration.statements) {
+      const match = statement.match(/^ALTER TABLE ([a-z_]+) ADD COLUMN ([a-z_]+)/i);
+      if (!match || tables.has(match[1])) continue;
+      const result = await db.query(`PRAGMA table_info(${match[1]})`);
+      tables.set(match[1], new Set((result.values || []).map((row) => row.name).filter(Boolean)));
+    }
     return migration.statements.filter((statement) => {
-      const match = statement.match(/^ALTER TABLE tastings ADD COLUMN ([a-z_]+)/i);
-      return !match || !columns.has(match[1]);
+      const match = statement.match(/^ALTER TABLE ([a-z_]+) ADD COLUMN ([a-z_]+)/i);
+      return !match || !tables.get(match[1])?.has(match[2]);
     });
   } catch {
     return migration.statements;
@@ -111,7 +118,7 @@ async function migrate(db) {
 
 async function openDatabase() {
   setDiagnostic({ stage: "plugin_lookup", error: "", connection: "not_created", open: false });
-  const exports = sqliteBridge();
+  const exports = await sqliteBridge();
   const plugin = exports.CapacitorSQLite;
   const Connection = exports.SQLiteConnection;
   const DBConnection = exports.SQLiteDBConnection;

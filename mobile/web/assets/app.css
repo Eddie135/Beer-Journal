@@ -69,20 +69,12 @@ a { color: inherit; }
 .collection-search button { flex: 0 0 52px; width: 52px; height: 52px; min-height: 48px; padding: 0; border: 0; background: transparent; color: var(--muted); font-size: 1.35rem; cursor: pointer; }
 .filter-trigger { width: 100%; min-height: 48px; margin: 0 0 20px; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border: 0; border-radius: var(--radius-control); background: var(--surface); box-shadow: var(--shadow-card); color: var(--ink); font-weight: 750; text-align: left; cursor: pointer; transition: transform var(--motion-fast) var(--ease), box-shadow var(--motion) var(--ease); }
 .filter-trigger:active { transform: scale(.985); box-shadow: 0 4px 15px rgba(0, 0, 0, .05); }
-.filter-overlay { position: fixed; z-index: 19; inset: 0; visibility: hidden; background: rgba(24, 25, 27, .3); opacity: 0; transition: opacity var(--motion) var(--ease), visibility 0s linear var(--motion); }
-.filter-overlay.is-open { visibility: visible; opacity: 1; transition-delay: 0s; }
-.filter-sheet { position: fixed; z-index: 20; top: max(8px, env(safe-area-inset-top)); right: 12px; left: 12px; max-height: min(78vh, 640px); overflow: auto; border: 1px solid rgba(255, 255, 255, .88); border-radius: 28px; background: rgba(255, 255, 255, .94); box-shadow: 0 22px 54px rgba(24, 25, 27, .2); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); opacity: 0; pointer-events: none; transform: translateY(-16px) scale(.98); transition: opacity var(--motion) var(--ease), transform var(--motion) var(--ease); }
-.filter-sheet.is-open { opacity: 1; pointer-events: auto; transform: translateY(0) scale(1); }
-.filter-sheet-header { min-height: 60px; padding: 14px 14px 8px 21px; display: flex; align-items: center; justify-content: space-between; font-weight: 800; }
-.filter-sheet-header button { width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--surface-soft); color: var(--ink); font-size: 1.45rem; line-height: 1; cursor: pointer; }
-.filter-sheet-header button:active { transform: scale(.92); }
 .collection-filters { padding: 4px 20px 22px; }
 .filter-grid { display: grid; gap: 12px; }
 .filter-grid label { display: grid; gap: 7px; color: var(--muted); font-size: .8rem; font-weight: 700; }
 .filter-grid select, .filter-grid input { width: 100%; min-height: 46px; padding: 10px 12px; border: 0; border-radius: 14px; background: var(--surface-soft); color: var(--ink); outline-color: var(--accent); }
 .filter-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; }
 .filter-actions a { color: var(--muted); font-size: .9rem; text-decoration: none; }
-body.filter-sheet-open .bottom-tab-bar { opacity: 0; pointer-events: none; transform: translate(-50%, 18px); }
 
 .collection-grid { display: grid; grid-template-columns: 1fr; gap: 17px; }
 .collection-card { overflow: hidden; transition: transform var(--motion-fast) var(--ease), box-shadow var(--motion) var(--ease); }
