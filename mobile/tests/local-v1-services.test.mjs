@@ -19,6 +19,13 @@ test("photo repository keeps private relative paths and safe processing limits",
   assert.doesNotMatch(photo, /data:image.*INSERT|base64.*INSERT/);
 });
 
+test("large photos are compressed locally instead of rejected by source size", () => {
+  assert.match(photo, /compressForStorage/);
+  assert.match(photo, /dataUrlBytes/);
+  assert.doesNotMatch(photo, /file\.size\s*>\s*MAX_BYTES/);
+  assert.match(photo, /quality = 0\.82/);
+});
+
 test("stats repository excludes soft-deleted records and provides complete dashboard aggregates", () => {
   assert.match(stats, /b\.deleted_at IS NULL/);
   assert.match(stats, /t\.deleted_at IS NULL/);

@@ -618,3 +618,6 @@ Schema version 2 为 version 1 的本地 `tastings` 表增加 `consumed_at`、`l
 本地 APK 使用固定数据库名 `beer_journal` 和迁移版本 4。Schema 4 在保留 Beer、Tasting、标签关系的基础上，为 `photos` 增加缩略图、软删除、封面标记和同步预留字段，并建立 Beer/Tasting/删除状态索引。迁移只允许事务化升级，不删除或重建已有数据库。
 
 照片文件存放在 App 私有文件目录，SQLite 仅保存相对路径和元数据。上传时限制尺寸和大小并重新编码；照片、Beer、Tasting、标签均通过 Repository 访问，页面不得直接执行 SQL。备份为单个 JSON 文件并包含 schema 版本与照片文件，导入使用 UUID 幂等写入和失败回滚。
+## 1.0 frozen storage contract
+
+The released local database is `beer_journal` Schema 4. Existing migration files remain authoritative; 1.0 uses SQLite transactions, stable UUIDs, soft deletion, integer-scaled values, and relative private photo paths. No release step rebuilds or clears the database.

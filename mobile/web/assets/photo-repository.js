@@ -58,13 +58,36 @@ function canvasEncode(source, maxEdge, quality = 0.84) {
 
 async function fileToDataUrl(file) {
   if (typeof file === "string") return file;
-  if (file?.size && file.size > MAX_BYTES) throw new Error("照片不能超过 2.5 MB");
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = () => reject(new Error("图片读取失败"));
     reader.readAsDataURL(file);
   });
+}
+
+function dataUrlBytes(dataUrl) {
+  const payload = String(dataUrl).split(",", 2)[1] || "";
+  return Math.ceil((payload.length * 3) / 4);
+}
+
+async function compressForStorage(source) {
+  let edge = MAX_EDGE;
+  let quality = 0.82;
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const encoded = await canvasEncode(source, edge, quality);
+    if (dataUrlBytes(encoded.dataUrl) <= MAX_BYTES) return encoded;
+    if (quality > 0.48) quality = Math.max(0.45, quality - 0.08);
+    else edge = Math.max(960, Math.round(edge * 0.82));
+  }
+  throw new Error("照片压缩后仍然过大，请换一张图片再试");
+}
+
+async function preparePhoto(source) {
+  const rawDataUrl = await fileToDataUrl(source);
+  const processed = await compressForStorage(rawDataUrl);
+  const thumb = await canvasEncode(rawDataUrl, THUMB_EDGE, 0.78);
+  return { __preparedPhoto: true, rawDataUrl, processed, thumb, previewDataUrl: thumb.dataUrl };
 }
 
 function mapPhoto(row) {
@@ -87,9 +110,10 @@ export class PhotoRepository {
 
   async addPhoto({ ownerType, ownerId, source, name = "photo" }) {
     if (!ownerId || !source) throw new Error("图片信息不完整");
-    const raw = await fileToDataUrl(source);
-    const processed = await canvasEncode(raw, MAX_EDGE);
-    const thumb = await canvasEncode(raw, THUMB_EDGE, 0.78);
+    const prepared = source?.__preparedPhoto ? source : null;
+    const raw = prepared ? prepared.rawDataUrl : await fileToDataUrl(source);
+    const processed = prepared ? prepared.processed : await compressForStorage(raw);
+    const thumb = prepared ? prepared.thumb : await canvasEncode(raw, THUMB_EDGE, 0.78);
     const id = uuid();
     const basePath = `${PHOTO_DIRECTORY}/${id}`;
     const originalPath = `${basePath}.webp`;
@@ -175,6 +199,8 @@ export class PhotoRepository {
     const result = await plugins().Camera?.getPhoto?.({ resultType: "DATA_URL", source: "CAMERA", quality: 90, correctOrientation: true });
     return result?.dataUrl || null;
   }
+
+  preparePhoto(source) { return preparePhoto(source); }
 }
 
 export const photoRepository = new PhotoRepository();

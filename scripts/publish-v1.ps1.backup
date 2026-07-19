@@ -1,0 +1,192 @@
+param(
+    [string]$ApkPath = "$PSScriptRoot\..\mobile\android\app\build\outputs\apk\release\Beer-Journal-v1.0.0-release.apk",
+    [string]$ShaPath = "$PSScriptRoot\..\mobile\android\app\build\outputs\apk\release\Beer-Journal-v1.0.0-SHA256.txt"
+)
+
+$ErrorActionPreference = 'Stop'
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$ghPath = (Get-Command gh.exe -ErrorAction SilentlyContinue).Source
+if (-not $ghPath) {
+    $knownGh = 'C:\Program Files\GitHub CLI\gh.exe'
+    if (Test-Path -LiteralPath $knownGh) { $ghPath = $knownGh }
+}
+if (-not $ghPath) { throw 'GitHub CLI (gh.exe) was not found.' }
+
+function Invoke-Captured {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string[]]$Arguments,
+        [switch]$AllowFailure
+    )
+    $token = [Guid]::NewGuid().ToString('N')
+    $stdoutPath = Join-Path $env:TEMP "beer-journal-publish-$token.out"
+    $stderrPath = Join-Path $env:TEMP "beer-journal-publish-$token.err"
+    try {
+        $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -WorkingDirectory $repoRoot -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw } else { '' }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw } else { '' }
+        if ($stdout) { Write-Host $stdout.TrimEnd() }
+        if ($stderr) { Write-Host $stderr.TrimEnd() }
+        if (-not $AllowFailure -and $process.ExitCode -ne 0) {
+            throw "$FilePath failed with exit code $($process.ExitCode)."
+        }
+        return [pscustomobject]@{ ExitCode = $process.ExitCode; StdOut = $stdout.Trim(); StdErr = $stderr.Trim() }
+    } finally {
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
+function Get-GitOutput {
+    param([string[]]$Arguments)
+    return (Invoke-Captured -FilePath 'git.exe' -Arguments $Arguments).StdOut
+}
+
+function Get-GhOutput {
+    param([string[]]$Arguments)
+    return (Invoke-Captured -FilePath $ghPath -Arguments $Arguments).StdOut
+}
+
+Push-Location $repoRoot
+$temporaryFiles = @()
+try {
+    Write-Host 'Checking GitHub authentication (token is not requested or printed)...'
+    Invoke-Captured -FilePath $ghPath -Arguments @('auth', 'status') | Out-Null
+
+    if (-not (Test-Path -LiteralPath $ApkPath)) { throw "Release APK not found: $ApkPath" }
+    if (-not (Test-Path -LiteralPath $ShaPath)) { throw "Release SHA-256 file not found: $ShaPath" }
+    $actualApkHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ApkPath).Hash.ToLowerInvariant()
+    $shaLine = (Get-Content -LiteralPath $ShaPath | Where-Object { $_.Trim() } | Select-Object -First 1)
+    $declaredApkHash = ($shaLine -split '\s+')[0].ToLowerInvariant()
+    if ($actualApkHash -ne $declaredApkHash) { throw "APK SHA-256 file does not match the APK." }
+    Write-Host "APK SHA-256 verified: $actualApkHash"
+
+    Invoke-Captured -FilePath 'git.exe' -Arguments @('diff', '--check') | Out-Null
+    Write-Host 'Git diff check passed.'
+
+    $tracked = @(Get-GitOutput @('ls-files') -split "`r?`n" | Where-Object { $_ })
+    $sensitivePattern = '(^|/)(keystore\.properties|[^/]+\.(keystore|jks|p12|pfx|apk|db|sqlite|sqlite3|jsonl))$|(^|/)(dist|build|node_modules|\.gradle|local\.properties|media|logs?)(/|$)|(^|/).*(backup|screenshot|logcat|test-photo).*\.(json|jpg|jpeg|png|txt)$'
+    $sensitiveTracked = @($tracked | Where-Object { $_ -match $sensitivePattern })
+    if ($sensitiveTracked.Count -gt 0) {
+        throw "Sensitive or generated files are already tracked: $($sensitiveTracked -join ', ')"
+    }
+    $checkpointProbe = Invoke-Captured -FilePath 'git.exe' -Arguments @('show-ref', '--verify', '--quiet', 'refs/tags/local-first-rc1-checkpoint') -AllowFailure
+    if ($checkpointProbe.ExitCode -ne 0) {
+        throw 'Required tag local-first-rc1-checkpoint is missing.'
+    }
+
+    $fullRepoName = $null
+    $owner = (Get-GhOutput @('api', 'user', '--jq', '.login')).Trim()
+    if (-not $owner) { throw 'Could not determine the authenticated GitHub account.' }
+    foreach ($candidate in @("$owner/Beer-Journal", "$owner/beer-journal-android")) {
+        $probe = Invoke-Captured -FilePath $ghPath -Arguments @('repo', 'view', $candidate, '--json', 'nameWithOwner,url') -AllowFailure
+        if ($probe.ExitCode -eq 0) { $fullRepoName = $candidate; break }
+    }
+    if (-not $fullRepoName) {
+        $fullRepoName = "$owner/Beer-Journal"
+        Invoke-Captured -FilePath $ghPath -Arguments @('repo', 'create', $fullRepoName, '--public') | Out-Null
+    }
+    $repoUrl = "https://github.com/$fullRepoName.git"
+
+    $pagePath = Join-Path $repoRoot 'docs\index.html'
+    if (Test-Path -LiteralPath $pagePath) {
+        $pageHtml = Get-Content -LiteralPath $pagePath -Raw
+        $pageHtml = $pageHtml.Replace('https://github.com/OWNER/beer-journal', "https://github.com/$fullRepoName")
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($pagePath, $pageHtml, $utf8NoBom)
+    }
+
+    $originProbe = Invoke-Captured -FilePath 'git.exe' -Arguments @('remote', 'get-url', 'origin') -AllowFailure
+    if ($originProbe.ExitCode -eq 0) {
+        if ($originProbe.StdOut.TrimEnd('/') -ne $repoUrl.TrimEnd('/')) {
+            throw "Existing origin points to a different repository: $($originProbe.StdOut)"
+        }
+    } else {
+        Invoke-Captured -FilePath 'git.exe' -Arguments @('remote', 'add', 'origin', $repoUrl) | Out-Null
+    }
+    Invoke-Captured -FilePath $ghPath -Arguments @('repo', 'edit', $fullRepoName, '--visibility', 'public') | Out-Null
+
+    $currentBranch = (Get-GitOutput @('branch', '--show-current')).Trim()
+    Invoke-Captured -FilePath 'git.exe' -Arguments @('add', '-A') | Out-Null
+    $staged = @(Get-GitOutput @('diff', '--cached', '--name-only') -split "`r?`n" | Where-Object { $_ })
+    $badStaged = @($staged | Where-Object { $_ -match $sensitivePattern })
+    if ($badStaged.Count -gt 0) { throw "Sensitive or generated files would be committed: $($badStaged -join ', ')" }
+
+    $commit = $null
+    if ($staged.Count -gt 0) {
+        $commitMessagePath = Join-Path $env:TEMP 'beer-journal-release-commit-message.txt'
+        $temporaryFiles += $commitMessagePath
+        [System.IO.File]::WriteAllText($commitMessagePath, "feat: release Beer Journal 1.0`r`n", (New-Object System.Text.UTF8Encoding($false)))
+        Invoke-Captured -FilePath 'git.exe' -Arguments @('commit', '-F', $commitMessagePath) | Out-Null
+    }
+    $commit = (Get-GitOutput @('rev-parse', 'HEAD')).Trim()
+
+    if ($currentBranch -ne 'main') {
+        $mainProbe = Invoke-Captured -FilePath 'git.exe' -Arguments @('show-ref', '--verify', '--quiet', 'refs/heads/main') -AllowFailure
+        if ($mainProbe.ExitCode -eq 0) {
+            Invoke-Captured -FilePath 'git.exe' -Arguments @('branch', '-f', 'main', $commit) | Out-Null
+        } else {
+            Invoke-Captured -FilePath 'git.exe' -Arguments @('branch', 'main', $commit) | Out-Null
+        }
+        Invoke-Captured -FilePath 'git.exe' -Arguments @('switch', 'main') | Out-Null
+    }
+
+    $tagProbe = Invoke-Captured -FilePath 'git.exe' -Arguments @('rev-parse', '--verify', 'v1.0.0^{commit}') -AllowFailure
+    if ($tagProbe.ExitCode -eq 0) {
+        if ($tagProbe.StdOut.Trim() -ne $commit) { throw 'Existing v1.0.0 tag points to a different commit.' }
+    } else {
+        $tagMessagePath = Join-Path $env:TEMP 'beer-journal-v1-tag-message.txt'
+        $temporaryFiles += $tagMessagePath
+        [System.IO.File]::WriteAllText($tagMessagePath, "Beer Journal 1.0`r`nFirst stable local-first Android release.`r`n", (New-Object System.Text.UTF8Encoding($false)))
+        Invoke-Captured -FilePath 'git.exe' -Arguments @('tag', '-a', 'v1.0.0', '-F', $tagMessagePath, $commit) | Out-Null
+    }
+
+    Invoke-Captured -FilePath 'git.exe' -Arguments @('push', '--set-upstream', 'origin', 'main') | Out-Null
+    Invoke-Captured -FilePath 'git.exe' -Arguments @('push', 'origin', 'v1.0.0') | Out-Null
+
+    $releaseProbe = Invoke-Captured -FilePath $ghPath -Arguments @('release', 'view', 'v1.0.0', '--repo', $fullRepoName) -AllowFailure
+    if ($releaseProbe.ExitCode -eq 0) { throw 'GitHub Release v1.0.0 already exists; refusing to replace it automatically.' }
+    $notesPath = Join-Path $env:TEMP 'beer-journal-v1-release-notes.md'
+    $temporaryFiles += $notesPath
+    @'
+Beer Journal 1.0 is the first stable local-first Android release.
+
+- Beer and Tasting management
+- Multiple local photos, compression, and cover selection
+- Custom tags, countries, categories, styles, and ratings
+- Search, combined filters, and sorting
+- Personal statistics
+- Trash recovery
+- JSON backup and restore
+- Fully local storage with no account or cloud sync
+
+`com.mybeerjournal.app` and `com.mybeerjournal.app.v1test` are separate applications. Export JSON from the test app before importing it into the formal app. Keep the same release signing key for future upgrades.
+'@ | Set-Content -LiteralPath $notesPath -Encoding UTF8
+    $release = Invoke-Captured -FilePath $ghPath -Arguments @('release', 'create', 'v1.0.0', '--repo', $fullRepoName, '--target', 'main', '--title', '"Beer Journal 1.0"', '--notes-file', $notesPath, $ApkPath, $ShaPath)
+
+    $pagesUrl = $null
+    $pagesProbe = Invoke-Captured -FilePath $ghPath -Arguments @('api', "repos/$fullRepoName/pages") -AllowFailure
+    if ($pagesProbe.ExitCode -eq 0) {
+        try { $pagesUrl = ($pagesProbe.StdOut | ConvertFrom-Json).html_url } catch { $pagesUrl = $null }
+    } else {
+        $pagesBody = Join-Path $env:TEMP 'beer-journal-pages-source.json'
+        $temporaryFiles += $pagesBody
+        [System.IO.File]::WriteAllText($pagesBody, '{"source":{"branch":"main","path":"/docs"}}', (New-Object System.Text.UTF8Encoding($false)))
+        $pagesCreate = Invoke-Captured -FilePath $ghPath -Arguments @('api', '--method', 'POST', "repos/$fullRepoName/pages", '--input', $pagesBody, '-H', '"Accept: application/vnd.github+json"') -AllowFailure
+        if ($pagesCreate.ExitCode -eq 0) {
+            try { $pagesUrl = ($pagesCreate.StdOut | ConvertFrom-Json).html_url } catch { $pagesUrl = $null }
+        } else {
+            Write-Warning 'GitHub Pages could not be enabled automatically. Use Settings -> Pages -> Deploy from a branch -> main -> /docs.'
+        }
+    }
+
+    $status = Get-GitOutput @('status', '--short')
+    if ($status) { throw "Working tree is not clean after publish:`n$status" }
+    Write-Host "Commit: $commit"
+    Write-Host 'Tag: v1.0.0'
+    Write-Host "Repository: https://github.com/$fullRepoName"
+    Write-Host "Release: https://github.com/$fullRepoName/releases/tag/v1.0.0"
+    if ($pagesUrl) { Write-Host "Pages: $pagesUrl" } else { Write-Host 'Pages: configure main /docs in repository Settings -> Pages.' }
+} finally {
+    foreach ($path in $temporaryFiles) { Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue }
+    Pop-Location
+}

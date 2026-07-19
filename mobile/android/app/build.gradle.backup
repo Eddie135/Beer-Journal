@@ -29,6 +29,13 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
     signingConfigs {
         release {
             def storeFilePath = releaseKeystoreProperties['storeFile'] ?: System.getenv('BEER_JOURNAL_RELEASE_STORE_FILE')
@@ -43,14 +50,6 @@ android {
             } else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
                 throw new GradleException('Release signing is not configured. Provide mobile/android/keystore.properties or BEER_JOURNAL_RELEASE_* environment variables.')
             }
-        }
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
         }
     }
 }

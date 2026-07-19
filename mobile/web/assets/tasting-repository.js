@@ -179,7 +179,10 @@ export class TastingRepository {
     return result.values?.[0] || { tasting_count: 0, bottle_count: 0, latest_consumed_at: null, average_rating_scaled: null };
   }
 
-  async listDeletedTastings() { return this.listTastings({ includeDeleted: true }); }
+  async listDeletedTastings() {
+    const rows = await this.listTastings({ includeDeleted: true });
+    return rows.filter((tasting) => Boolean(tasting.deleted_at));
+  }
 }
 
 export const tastingRepository = new TastingRepository();

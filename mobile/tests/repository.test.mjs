@@ -114,6 +114,7 @@ test("Beer update increments revision and soft delete hides the record", async (
   assert.equal(updated.revision, 2);
   await beerRepository.softDeleteBeer(beer.id);
   assert.equal((await beerRepository.listBeers()).some((item) => item.id === beer.id), false);
+  assert.ok((await beerRepository.listDeletedBeers()).every((item) => item.deleted_at));
 });
 
 test("search and filter are delegated to SQL query parameters", async () => {
@@ -123,6 +124,17 @@ test("search and filter are delegated to SQL query parameters", async () => {
   assert.ok(fakeDb.queries.some((item) => typeof item === "object" && item.statement.includes("LIKE") && item.values.includes("%测试%")));
   assert.ok(fakeDb.queries.some((item) => typeof item === "object" && item.statement.includes("category = ?") && item.values.includes("拉格")));
   assert.ok(fakeDb.queries.some((item) => typeof item === "object" && item.statement.includes("LOWER(country_name) = LOWER(?)") && item.values.includes("Scotland")));
+});
+
+test("Beer default ordering is stable newest-created first", async () => {
+  await beerRepository.listBeers();
+  const query = [...fakeDb.queries].reverse().find((item) => typeof item === "object" && item.statement.includes("FROM beers WHERE"));
+  assert.ok(query);
+  assert.match(query.statement, /ORDER BY CASE WHEN created_at IS NULL THEN 1 ELSE 0 END, created_at DESC, id ASC/);
+  assert.doesNotMatch(query.statement, /ORDER BY name COLLATE NOCASE, created_at DESC/);
+  const source = await readFile(new URL("../web/assets/beer-repository.js", import.meta.url), "utf8");
+  assert.match(source, /created_at, updated_at/);
+  assert.doesNotMatch(source, /UPDATE beers SET[\s\S]*created_at\s*=/);
 });
 
 test("Tasting create/read/update keeps Beer relation and scaled values", async () => {
@@ -151,6 +163,7 @@ test("Tasting soft delete and statistics exclude deleted rows", async () => {
   const stats = await tastingRepository.getStatsByBeerId(beer.id);
   assert.equal(stats.tasting_count, 1);
   assert.equal(stats.bottle_count, 1);
+  assert.ok((await tastingRepository.listDeletedTastings()).every((item) => item.deleted_at));
 });
 
 test("Tasting requires a Beer and does not create an empty record", async () => {

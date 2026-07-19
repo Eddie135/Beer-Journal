@@ -25,10 +25,13 @@ mobile/.env.test
 /beta4-*.txt
 /*-current.png
 scripts/beta4-native-gate.ps1
+scripts/rc2-host-gate.ps1
 *.apk
 *.aab
 *.keystore
 *.jks
+keystore.properties
+**/keystore.properties
 *.hprof
 *.db
 *.sqlite
@@ -40,6 +43,13 @@ scripts/beta4-native-gate.ps1
 *.log
 *.trace
 *.har
+/*-logcat*.txt
+/*-review*.txt
+/*-test*.txt
+/*-current.png
+/*-after-*.png
+/*-picker.png
+/*-start.png
 *-screenshot.png
 *-screen.png
 *-photo.jpg
@@ -53,4 +63,6 @@ test-*.webp
 *.temp
 *.bak
 /.gradle-project-cache-v1/
+/.gradle-project-cache/
+/.gradle-project-cache-release/
 mobile/tests/e2e/.artifacts/

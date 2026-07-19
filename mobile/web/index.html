@@ -11,22 +11,21 @@
   <title>Beer Journal</title>
 </head>
 <body>
-  <div id="app-shell" class="local-app" data-app-shell>
-    <header class="local-header" data-app-header>
-      <div class="local-brand">
-        <img id="app-logo" class="logo-image" src="assets/beer-journal-icon.png" width="42" height="42" alt="Beer Journal">
-        <div><small>BEER JOURNAL</small><strong>本地收藏</strong></div>
-      </div>
-    </header>
-    <main id="route-content" class="local-route-content" aria-live="polite"></main>
-    <nav id="bottom-nav" class="local-bottom-nav" data-app-bottom-nav aria-label="主要导航">
-      <a class="local-tab" href="#/beers" data-route="/beers"><span class="local-tab-icon" aria-hidden="true">🍺</span><span>我的啤酒</span></a>
-      <a class="local-tab" href="#/tastings" data-route="/tastings"><span class="local-tab-icon" aria-hidden="true">📝</span><span>饮用记录</span></a>
-      <a class="local-tab" href="#/profile" data-route="/profile"><span class="local-tab-icon" aria-hidden="true">◉</span><span>个人数据</span></a>
-    </nav>
+  <div class="app-shell" data-app-shell>
+  <header class="app-header" data-app-header>
+    <a class="app-wordmark" href="#/beers" data-route="/beers">
+      <img id="app-logo" class="logo-image" src="assets/beer-journal-icon.png" width="32" height="32" alt="Beer Journal">
+      <span>BEER JOURNAL</span>
+    </a>
+  </header>
+  <main class="app-content" id="route-content" aria-live="polite"></main>
+  <nav class="bottom-tab-bar" data-app-bottom-nav aria-label="主要导航">
+    <a class="tab-item" href="#/beers" data-route="/beers"><span class="tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M6 4h12v16l-6-3-6 3z"></path></svg></span><span>我的啤酒</span></a>
+    <a class="tab-item" href="#/tastings" data-route="/tastings"><span class="tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 7v5l3 2"></path></svg></span><span>饮用记录</span></a>
+    <a class="tab-item" href="#/profile" data-route="/profile"><span class="tab-icon" aria-hidden="true"><svg class="ui-icon" viewBox="0 0 24 24"><path d="M5 19V9M12 19V5M19 19v-7"></path></svg></span><span>个人数据</span></a>
+  </nav>
+  <div id="overlay-root" class="overlay-root" aria-live="polite"></div>
   </div>
-  <noscript>Beer Journal 需要启用 JavaScript 才能运行。</noscript>
-  <div id="overlay-root" class="overlay-root filter-overlay-root" data-filter-root aria-live="polite"></div>
   <script type="module" src="assets/app.js"></script>
 </body>
 </html>

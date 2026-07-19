@@ -131,10 +131,10 @@ export class BeerRepository {
         params.push(tagId);
       }
     }
-    const orderBy = filters.order === "rating" ? "overall_rating_scaled IS NULL, overall_rating_scaled DESC, name COLLATE NOCASE"
-      : filters.order === "tastings" ? "(SELECT COUNT(*) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) DESC, name COLLATE NOCASE"
-      : filters.order === "recent" ? "(SELECT MAX(t.consumed_at) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) IS NULL, (SELECT MAX(t.consumed_at) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) DESC, name COLLATE NOCASE"
-      : "name COLLATE NOCASE, created_at DESC";
+    const orderBy = filters.order === "rating" ? "overall_rating_scaled IS NULL, overall_rating_scaled DESC, name COLLATE NOCASE, id ASC"
+      : filters.order === "tastings" ? "(SELECT COUNT(*) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) DESC, name COLLATE NOCASE, id ASC"
+      : filters.order === "recent" ? "(SELECT MAX(t.consumed_at) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) IS NULL, (SELECT MAX(t.consumed_at) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) DESC, name COLLATE NOCASE, id ASC"
+      : "CASE WHEN created_at IS NULL THEN 1 ELSE 0 END, created_at DESC, id ASC";
     const result = await db.query(`SELECT beers.*,
       (SELECT AVG(t.rating_scaled) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) AS average_rating_scaled,
       (SELECT COUNT(*) FROM tastings t WHERE t.beer_id = beers.id AND t.deleted_at IS NULL) AS tasting_count,
@@ -187,7 +187,10 @@ export class BeerRepository {
     return this.getBeerById(id);
   }
 
-  async listDeletedBeers() { return this.listBeers({ includeDeleted: true }); }
+  async listDeletedBeers() {
+    const rows = await this.listBeers({ includeDeleted: true });
+    return rows.filter((beer) => Boolean(beer.deleted_at));
+  }
 }
 
 export const beerRepository = new BeerRepository();

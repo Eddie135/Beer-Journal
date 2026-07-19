@@ -385,3 +385,6 @@ v1.0 必须覆盖 Beer/Tasting 的本地核心流程、CountryPicker、照片、
 v1.0 改为完全本地运行的 Android APK，离线使用 SQLite 保存 Beer、Tasting、风味标签和照片。应用不依赖 Django、PostgreSQL、账号系统或 `mybeerjournal.com`，后续同步和账号能力延至 v1.1。
 
 首版必须覆盖：Beer/Tasting 完整 CRUD、软删除与恢复、CountryPicker、自定义标签、五选项体验评分、本地多图照片、搜索筛选排序、个人数据统计、JSON 备份恢复，以及 Android 返回键和浮层交互。
+## 1.0 release freeze
+
+Beer Journal 1.0 is a fully local Android product. All records and photos remain on-device; the app has no server dependency, account system, or cloud synchronization. Future candidates are tracked in `docs/ROADMAP.md` and are not part of this release.

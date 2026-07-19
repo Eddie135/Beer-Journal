@@ -42,6 +42,11 @@ export class BackupService {
     const backup = await this.exportBackup();
     const json = JSON.stringify(backup);
     const filename = `beer-journal-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    if (globalThis.Capacitor?.isNativePlatform?.() || globalThis.Capacitor?.getPlatform?.() === "android") {
+      const path = `backups/${filename}`;
+      await fs().writeFile({ path, data: base64Json(backup), directory: "DATA", recursive: true });
+      return `DATA/${path}`;
+    }
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");

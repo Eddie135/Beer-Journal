@@ -31,3 +31,6 @@
 ## 最终门禁
 
 全部功能完成后才运行 Playwright 360×800、393×852、412×915 三视口回归，并使用独立测试包 `com.mybeerjournal.app.v1test` 完成一次 Schema 4、照片、备份恢复、强制停止和覆盖安装门禁。只有所有检查通过后生成唯一 `Beer-Journal-v1.0.0-rc1.apk`，开发过程中不生成中间用户 APK。
+## Release status
+
+The 1.0 scope is frozen. Schema 4, local SQLite data, Beer/Tasting workflows, tags, countries, ratings, local photos, statistics, trash recovery, and JSON backup/restore are included. Accounts, cloud sync, analytics, multi-language mode, dark mode, and AI are outside this release.

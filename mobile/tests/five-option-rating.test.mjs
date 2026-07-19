@@ -47,8 +47,8 @@ test("Beer add/edit pages use the component and Beer details use the same values
   assert.doesNotMatch(appSource, /name="mouthfeel_rating" type="number"/);
   assert.doesNotMatch(appSource, /name="bitterness_rating" type="number"/);
   assert.doesNotMatch(appSource, /name="complexity_rating" type="number"/);
-  assert.match(appSource, /beerRepository\.createBeer\(payload\)/);
-  assert.match(appSource, /beerRepository\.updateBeer\(form\.dataset\.beerId, payload\)/);
+  assert.match(appSource, /localDataAdapter\.createBeer\(payload\)/);
+  assert.match(appSource, /localDataAdapter\.updateBeer\(form\.dataset\.beerId, payload\)/);
 });
 
 test("FiveOptionRating uses amber touch feedback and keeps the native radio semantic", async () => {

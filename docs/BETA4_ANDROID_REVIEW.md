@@ -122,3 +122,11 @@
 - Node 自动测试 47/47 通过。Playwright 三视口本轮未能执行：项目未声明 Playwright，当前 node_modules 缺少 `playwright-core`，且不在本轮修改生产依赖。
 
 当前结论：标签契约和真机定向流程通过；由于 Playwright 门禁环境阻塞，beta4 完整门禁暂不判定通过。
+## RC2 内部包 Shell 回归（2026-07-18）
+
+- `com.mybeerjournal.app.v1test` versionCode 23 已由宿主脚本重新构建并 `adb install -r` 覆盖安装；正式包未安装、未操作。
+- `index-B888YLFn.js` 与 `index-CvqwqQxJ.css` 已进入 APK，dist/assets 与 Android assets SHA-256 一致。
+- 列表、新建 Beer、饮用记录列表、个人数据、Filter Sheet、CountryPicker 均完成截图和 UI hierarchy 检查；新建 Beer 的 Header、H1、subtitle、hero、返回按钮各为 1 个。
+- 表单可滚动至保存按钮；但静止在顶部时固定底栏仍覆盖中段字段，记录为本轮阻塞项，未修改代码。
+- 内部测试包无有效 Beer 数据，因此 Beer/Tasting 详情和编辑路线未能进入，相关截图标记未执行。
+- 清空日志后重启：FATAL/SQLiteException/console.error/unhandled rejection/TAG_ID_INVALID/database is locked 均为 0；`E/AndroidRuntime` 为 0。
