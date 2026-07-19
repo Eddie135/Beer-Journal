@@ -24,9 +24,20 @@ try {
 
 Push-Location $android
 try {
-    & $gradleCommand --offline --project-cache-dir $projectCache clean assembleRelease '-Pv1Test=false' '-PversionCode=31' '-PversionName=1.0.0' "-PapkName=$apkName"
+    & $gradleCommand --offline --project-cache-dir $projectCache clean assembleRelease '-Pv1Test=false' '-PversionCode=32' '-PversionName=1.0.0' "-PapkName=$apkName"
     if ($LASTEXITCODE -ne 0) { throw "Gradle release build failed with exit code $LASTEXITCODE" }
 } finally { Pop-Location }
+
+$releaseOutputDir = Join-Path $android 'app\build\outputs\apk\release'
+$gradleApk = Get-ChildItem -LiteralPath $releaseOutputDir -Filter '*.apk' -File |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 1
+if (-not $gradleApk) {
+    throw "Gradle completed but no release APK was found in $releaseOutputDir"
+}
+if ($gradleApk.FullName -ne $apkPath) {
+    Copy-Item -LiteralPath $gradleApk.FullName -Destination $apkPath -Force
+}
 
 if (!(Test-Path -LiteralPath $apkPath)) { throw "Release APK was not created: $apkPath" }
 $shaPath = Join-Path $android "app\build\outputs\apk\release\Beer-Journal-v1.0.0-SHA256.txt"

@@ -5,6 +5,7 @@ import { overlayManager } from "./overlay-manager.mjs";
 import { renderFiveOptionRating, renderFiveOptionSummary } from "./five-option-rating.mjs";
 import { normalizeTagName, splitTagInput } from "./tag-repository.js";
 import { localDataAdapter } from "./local-data-adapter.js";
+import { updateFilterSheetPreservingScroll } from "./filter-sheet-scroll.mjs";
 import { App } from "@capacitor/app";
 
 const app = document.querySelector("#route-content");
@@ -266,19 +267,20 @@ function renderFilterPortal() {
   const portal = document.querySelector("#overlay-root");
   if (!portal) return;
 
-  // Re-rendering a filter choice must close the previous overlay first.  The
-  // overlay manager's onClose callback clears #overlay-root; rendering first
-  // would therefore immediately erase the newly rendered sheet and leave the
-  // page in a locked, empty-overlay state.
-  if (overlayManager.getTopOverlay()?.id === "filter-sheet") {
-    overlayManager.closeOverlay("filter-sheet");
+  const currentSheet = portal.querySelector("[data-filter-sheet]");
+  if (currentSheet && overlayManager.getTopOverlay()?.id === "filter-sheet") {
+    const template = document.createElement("template");
+    template.innerHTML = renderFilterSheet(window.__beerJournalAvailableTags || []);
+    const nextSheet = template.content.querySelector("[data-filter-sheet]");
+    if (updateFilterSheetPreservingScroll(currentSheet, nextSheet)) {
+      ensureCreatedOrderChoice(currentSheet);
+      return;
+    }
   }
 
   portal.innerHTML = renderFilterSheet(window.__beerJournalAvailableTags || []);
   const sheet = portal.querySelector("[data-filter-sheet]");
-  const orderField = sheet?.querySelectorAll(".filter-field")?.item((sheet.querySelectorAll(".filter-field")?.length || 1) - 1);
-  const orderGrid = orderField?.querySelector(".filter-choice-grid");
-  if (orderGrid && !orderGrid.querySelector('[data-filter-order="created"]')) orderGrid.insertAdjacentHTML("afterbegin", `<button type="button" class="filter-choice${filters.order === "created" ? " is-selected" : ""}" data-filter-order="created">最新录入</button>`);
+  ensureCreatedOrderChoice(sheet);
   const backdrop = portal.querySelector("[data-filter-overlay]");
   portal.classList.add("filter-overlay-root", "is-open");
   sheet?.classList.add("is-open");
@@ -295,6 +297,13 @@ function renderFilterPortal() {
       document.body.classList.remove("filter-sheet-open");
     },
   });
+}
+
+function ensureCreatedOrderChoice(sheet) {
+  if (!sheet) return;
+  const orderField = sheet?.querySelectorAll(".filter-field")?.item((sheet.querySelectorAll(".filter-field")?.length || 1) - 1);
+  const orderGrid = orderField?.querySelector(".filter-choice-grid");
+  if (orderGrid && !orderGrid.querySelector('[data-filter-order="created"]')) orderGrid.insertAdjacentHTML("afterbegin", `<button type="button" class="filter-choice${filters.order === "created" ? " is-selected" : ""}" data-filter-order="created">最新录入</button>`);
 }
 
 function updateTagEditor(editor, names) { editor.dataset.tags = JSON.stringify(names); editor.querySelector("[data-tag-chips]").innerHTML = names.map((name) => `<span class="local-tag-pill">${esc(name)} <button type="button" data-remove-tag="${esc(name)}">×</button><input type="hidden" name="flavor_tags" value="${esc(name)}"></span>`).join(""); editor.querySelector("[data-tag-input]").value = ""; }
