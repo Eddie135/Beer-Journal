@@ -37,6 +37,13 @@ function Invoke-Captured {
         if ($null -eq $stderr) { $stderr = '' }
         $exitCode = if ($null -eq $process) { 1 } else { [int]$process.ExitCode }
         if (-not $AllowFailure -and $exitCode -ne 0) {
+            $detail = (([string]$stderr).Trim() + ' ' + ([string]$stdout).Trim()).Trim()
+            $detail = $detail -replace '(?i)(token\s*:\s*)\S+', '$1[redacted]'
+            $detail = $detail -replace '(?i)\b(gh[pousr]_[A-Za-z0-9_\-]+)\b', '[redacted-token]'
+            if ($detail.Length -gt 1000) { $detail = $detail.Substring(0, 1000) + '...' }
+            if ($detail) {
+                throw "$FilePath failed with exit code ${exitCode}: $detail"
+            }
             throw "$FilePath failed with exit code $exitCode."
         }
         return [pscustomobject]@{ ExitCode = $exitCode; StdOut = ([string]$stdout).Trim(); StdErr = ([string]$stderr).Trim() }
