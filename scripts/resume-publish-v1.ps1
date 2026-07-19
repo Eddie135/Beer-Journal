@@ -47,11 +47,26 @@ function Invoke-Captured {
 
 function Git-Output { param([string[]]$Arguments) (Invoke-Captured -FilePath $gitPath -Arguments $Arguments -Quiet).StdOut }
 function Gh-Output { param([string[]]$Arguments) (Invoke-Captured -FilePath $ghPath -Arguments $Arguments -Quiet).StdOut }
-function Remote-Main { 
-    $result = Invoke-Captured -FilePath $gitPath -Arguments @('ls-remote', 'origin', 'refs/heads/main') -AllowFailure -Quiet
-    if ($result.ExitCode -ne 0) { throw "Unable to query origin/main: $($result.StdErr)" }
-    if ([string]::IsNullOrWhiteSpace($result.StdOut)) { return '' }
-    return (($result.StdOut -split '\s+')[0]).Trim()
+function Remote-Main {
+    $lastError = ''
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $result = Invoke-Captured -FilePath $gitPath -Arguments @('-c', 'http.version=HTTP/1.1', 'ls-remote', 'origin', 'refs/heads/main') -AllowFailure -Quiet
+        if ($result.ExitCode -eq 0) {
+            if ([string]::IsNullOrWhiteSpace($result.StdOut)) { return '' }
+            return (($result.StdOut -split '\s+')[0]).Trim()
+        }
+        $lastError = "$($result.StdOut) $($result.StdErr)"
+        if ($attempt -lt 3 -and $lastError -match '(?i)curl 55|connection reset|failed to connect|could not connect|timed out|connection timed out') {
+            Start-Sleep -Seconds 2
+        } else {
+            break
+        }
+    }
+
+    $api = Invoke-Captured -FilePath $ghPath -Arguments @('api', "repos/$fullRepo/git/ref/heads/main", '--jq', '.object.sha') -AllowFailure -Quiet
+    if ($api.ExitCode -eq 0 -and $api.StdOut -match '^[0-9a-f]{40}$') { return $api.StdOut.Trim() }
+    if (($api.StdOut + $api.StdErr) -match '(?i)not found|404') { return '' }
+    throw "Unable to query origin/main: $lastError"
 }
 function Is-Ancestor([string]$Older, [string]$Newer) {
     $result = Invoke-Captured -FilePath $gitPath -Arguments @('merge-base', '--is-ancestor', $Older, $Newer) -AllowFailure -Quiet
@@ -154,6 +169,13 @@ try {
             if ($afterPush -eq $localMain) { $pushed = $true; break }
             if (($push.StdOut + $push.StdErr) -notmatch '(?i)curl 55|connection reset|unexpected disconnect|RPC failed') { throw 'git push failed for a non-transient reason.' }
             if ($attempt -lt 3) { Start-Sleep -Seconds 2 }
+        }
+        if (-not $pushed) {
+            for ($verify = 1; $verify -le 3 -and -not $pushed; $verify++) {
+                Start-Sleep -Seconds 5
+                $confirmedRemote = Remote-Main
+                if ($confirmedRemote -eq $localMain) { $pushed = $true; break }
+            }
         }
         if (-not $pushed) {
             throw "main push did not complete after three safe retries. Last Git output: $($push.StdOut) $($push.StdErr)"
