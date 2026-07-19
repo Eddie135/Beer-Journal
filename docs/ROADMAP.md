@@ -1,29 +1,30 @@
-# Beer Journal Roadmap
+# Beer Journal 后续路线图
 
-This is planning only. No roadmap item is part of the 1.0 implementation.
+本文只记录候选方向，不代表已经开始开发或承诺发布日期。1.0 稳定版完成后，先收集真实使用反馈，再决定下一阶段。
 
-## v1.1 — Data safety and daily use
+## v1.1：数据安全与使用体验
 
-- Complete backup packages including photo files.
-- Automatic backup reminders and backup-file management.
-- Import preview and conflict report.
-- CSV export.
-- Additional statistics dimensions.
-- Small, user-driven UI refinements.
+- 包含照片文件的完整备份包
+- 自动备份提醒与备份文件管理
+- 导入前预览、冲突报告与更清晰的恢复结果
+- CSV 导出
+- 更多统计指标
+- 现有界面细节优化
 
-## v1.2 — Personalization
+## v1.2：个性化
 
-- Dark mode.
-- Multi-language support.
-- Custom rating dimensions.
-- Custom categories and styles.
-- Richer charts.
+- 深色模式
+- 多语言
+- 自定义分类与风格
+- 自定义评分维度
+- 更丰富的统计图表
 
-## v2.0 — Optional synchronization
+## v2.0：可选云同步
 
-- Accounts and opt-in server data.
-- Multi-device synchronization.
-- Conflict handling.
-- End-to-end migration strategy.
+- 用户账号
+- 多设备同步
+- 服务端存储与冲突处理
+- 本地数据迁移与端到端迁移策略
+- 离线优先的同步方案
 
-These are candidates, not commitments. Development is frozen after the 1.0 release until a future planning decision.
+以上内容都不属于当前 1.0。任何新阶段开始前，会先重新确认数据边界、隐私要求和迁移方案。

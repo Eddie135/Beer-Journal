@@ -47,7 +47,7 @@ function Invoke-Captured {
 
 function Git-Output { param([string[]]$Arguments) (Invoke-Captured -FilePath $gitPath -Arguments $Arguments -Quiet).StdOut }
 function Gh-Output { param([string[]]$Arguments) (Invoke-Captured -FilePath $ghPath -Arguments $Arguments -Quiet).StdOut }
-function Remote-Main {
+function GetRemoteMain {
     $lastError = ''
     for ($attempt = 1; $attempt -le 3; $attempt++) {
         $result = Invoke-Captured -FilePath $gitPath -Arguments @('-c', 'http.version=HTTP/1.1', 'ls-remote', 'origin', 'refs/heads/main') -AllowFailure -Quiet
@@ -104,7 +104,15 @@ try {
 
     $status = Git-Output @('status', '--porcelain')
     $headSubjectBeforeCommit = (Git-Output @('log', '-1', '--format=%s')).Trim()
-    $allowedResumeChanges = @('scripts/resume-publish-v1.ps1', 'docs/index.html')
+    $allowedResumeChanges = @(
+        'scripts/resume-publish-v1.ps1',
+        'docs/index.html',
+        'docs/styles.css',
+        'docs/script.js',
+        'README.md',
+        'docs/ROADMAP.md',
+        'docs/RELEASE_NOTES_ZH.md'
+    )
     $dirtyPaths = @($status -split "`r?`n" | Where-Object { $_ } | ForEach-Object {
         ($_ -replace '^[ MADRCU?!]{1,2}\s+', '')
     })
@@ -112,11 +120,11 @@ try {
         ($_ -notin $allowedResumeChanges) -and ($_ -notmatch '^scripts/publish-v1\.ps1\.broken-')
     })
     if ($unexpectedDirty.Count) { throw "Unexpected uncommitted files exist: $($unexpectedDirty -join ', ')" }
-    if (-not [string]::IsNullOrWhiteSpace($status) -and $headSubjectBeforeCommit -eq 'feat: release Beer Journal 1.0' -and ($dirtyPaths -contains 'docs/index.html')) {
-        Invoke-Captured -FilePath $gitPath -Arguments @('add', '--', 'docs/index.html') | Out-Null
+    if (-not [string]::IsNullOrWhiteSpace($status) -and $headSubjectBeforeCommit -eq 'feat: release Beer Journal 1.0' -and ($dirtyPaths | Where-Object { $_ -in $allowedResumeChanges })) {
+        Invoke-Captured -FilePath $gitPath -Arguments @('add', '--', $allowedResumeChanges) | Out-Null
         $pageCommitMessage = Join-Path $env:TEMP 'beer-journal-pages-commit.txt'
         $tempFiles += $pageCommitMessage
-        [IO.File]::WriteAllText($pageCommitMessage, "docs: link GitHub Pages to Beer Journal 1.0`r`n", (New-Object Text.UTF8Encoding($false)))
+        [IO.File]::WriteAllText($pageCommitMessage, "docs: redesign Chinese product and release pages`r`n", (New-Object Text.UTF8Encoding($false)))
         Invoke-Captured -FilePath $gitPath -Arguments @('commit', '-F', $pageCommitMessage) | Out-Null
     } elseif (-not [string]::IsNullOrWhiteSpace($status) -and $headSubjectBeforeCommit -ne 'feat: release Beer Journal 1.0') {
         Invoke-Captured -FilePath $gitPath -Arguments @('add', '-A') | Out-Null
@@ -143,29 +151,33 @@ try {
 
     $repoProbe = Invoke-Captured -FilePath $ghPath -Arguments @('repo', 'view', $fullRepo) -AllowFailure
     if ($repoProbe.ExitCode -ne 0) { throw "GitHub repository $fullRepo does not exist; refusing to create a different repository." }
+    $repoDescription = 'Beer Journal: a fully offline Android beer journal for local Beer, Tasting, photo, tag, and statistics records.'
+    $repoHomepage = 'https://' + $Owner + '.github.io/' + $Repository + '/'
+    $repoEditArgs = @('repo', 'edit', $fullRepo, '--description', $repoDescription, '--homepage', $repoHomepage, '--add-topic', 'android', '--add-topic', 'beer', '--add-topic', 'beer-journal', '--add-topic', 'offline-first', '--add-topic', 'local-first', '--add-topic', 'sqlite', '--add-topic', 'capacitor', '--add-topic', 'personal-journal', '--add-topic', 'chinese')
+    Invoke-Captured -FilePath $ghPath -Arguments $repoEditArgs -AllowFailure | Out-Null
     $origin = Invoke-Captured -FilePath $gitPath -Arguments @('remote', 'get-url', 'origin') -AllowFailure -Quiet
     if ($origin.ExitCode -ne 0) { Invoke-Captured -FilePath $gitPath -Arguments @('remote', 'add', 'origin', $remoteUrl) | Out-Null }
     elseif ($origin.StdOut.Trim() -ne $remoteUrl) { Invoke-Captured -FilePath $gitPath -Arguments @('remote', 'set-url', 'origin', $remoteUrl) | Out-Null }
 
-    $remoteMain = Remote-Main
+    $remoteMain = GetRemoteMain
     if ($remoteMain -eq $localMain) {
         Write-Host 'Remote main already matches local main; skipping object upload.'
     } else {
         if ($remoteMain) {
             Invoke-Captured -FilePath $gitPath -Arguments @('fetch', 'origin', 'main', '--no-tags') | Out-Null
-            Write-Host "Remote main: $remoteMain"
-            Write-Host "Local main:  $localMain"
+            Write-Host ('Remote main: ' + $remoteMain)
+            Write-Host ('Local main:  ' + $localMain)
             if (-not (Is-Ancestor $remoteMain $localMain)) { throw 'Remote main contains unknown commits; refusing to overwrite it.' }
         }
         [void](Invoke-Captured -FilePath $gitPath -Arguments @('config', 'http.version', 'HTTP/1.1'))
         $pushed = $false
         for ($attempt = 1; $attempt -le 3 -and -not $pushed; $attempt++) {
-            $beforePush = Remote-Main
+            $beforePush = GetRemoteMain
             if ($beforePush -eq $localMain) { $pushed = $true; break }
             if ($beforePush -and -not (Is-Ancestor $beforePush $localMain)) { throw 'Remote main changed and is not an ancestor; refusing a non-fast-forward overwrite.' }
-            $push = Invoke-Captured -FilePath $gitPath -Arguments @('-c', 'http.version=HTTP/1.1', '-c', 'core.compression=0', 'push', '--set-upstream', 'origin', 'main') -AllowFailure
+            $push = Invoke-Captured -FilePath $gitPath -Arguments @('-c', 'http.version=HTTP/1.1', '-c', 'core.compression=0', '-c', 'http.lowSpeedLimit=1', '-c', 'http.lowSpeedTime=120', 'push', '--no-thin', '--set-upstream', 'origin', 'main') -AllowFailure
             if ($push.ExitCode -eq 0) { $pushed = $true; break }
-            $afterPush = Remote-Main
+            $afterPush = GetRemoteMain
             if ($afterPush -eq $localMain) { $pushed = $true; break }
             if (($push.StdOut + $push.StdErr) -notmatch '(?i)curl 55|connection reset|unexpected disconnect|RPC failed') { throw 'git push failed for a non-transient reason.' }
             if ($attempt -lt 3) { Start-Sleep -Seconds 2 }
@@ -173,68 +185,67 @@ try {
         if (-not $pushed) {
             for ($verify = 1; $verify -le 3 -and -not $pushed; $verify++) {
                 Start-Sleep -Seconds 5
-                $confirmedRemote = Remote-Main
+                $confirmedRemote = GetRemoteMain
                 if ($confirmedRemote -eq $localMain) { $pushed = $true; break }
             }
         }
         if (-not $pushed) {
-            throw "main push did not complete after three safe retries. Last Git output: $($push.StdOut) $($push.StdErr)"
+            throw ('main push did not complete after three safe retries. Last Git output: ' + $push.StdOut + ' ' + $push.StdErr)
         }
     }
-    if ((Remote-Main) -ne $localMain) { throw 'Remote main does not match local main after publish.' }
+    if ((GetRemoteMain) -ne $localMain) { throw 'Remote main does not match local main after publish.' }
 
     $localTag = (Git-Output @('rev-list', '-n', '1', $tag)).Trim()
     $tagSubject = (Git-Output @('show', '-s', '--format=%s', $localTag)).Trim()
-    if ($tagSubject -ne 'feat: release Beer Journal 1.0') { throw "$tag does not point to the formal release commit." }
-    $remoteTagResult = Invoke-Captured -FilePath $gitPath -Arguments @('ls-remote', 'origin', "refs/tags/$tag^{}") -AllowFailure -Quiet
+    if ($tagSubject -ne 'feat: release Beer Journal 1.0') { throw ($tag + ' does not point to the formal release commit.') }
+    $remoteTagRef = 'refs/tags/' + $tag + '^{}'
+    $remoteTagResult = Invoke-Captured -FilePath $gitPath -Arguments @('ls-remote', 'origin', $remoteTagRef) -AllowFailure -Quiet
     if ($remoteTagResult.ExitCode -eq 0 -and $remoteTagResult.StdOut) {
         $remoteTag = ($remoteTagResult.StdOut -split '\s+')[0]
-        if ($remoteTag -ne $localTag) { throw "Remote $tag points to a different commit." }
+        if ($remoteTag -ne $localTag) { throw ('Remote ' + $tag + ' points to a different commit.') }
     } else {
         Invoke-Captured -FilePath $gitPath -Arguments @('push', 'origin', $tag) | Out-Null
     }
 
     $releaseNotes = Join-Path $env:TEMP 'beer-journal-v1-release-notes.md'
     $tempFiles += $releaseNotes
-    $releaseNotesContent = @'
-# Beer Journal 1.0
-
-首个稳定的本地离线 Android 版本，包含 Beer 与 Tasting 管理、多照片与本地压缩、标签、国家、分类、评分、搜索、筛选、排序、统计、回收站和 JSON 备份恢复。
-
-数据完全存储在手机本地，当前没有账号或云同步。`com.mybeerjournal.app.v1test` 与 `com.mybeerjournal.app` 是两个独立应用；请先从测试版导出 JSON，再在正式版导入。
-'@ | Set-Content -LiteralPath $releaseNotes -Encoding UTF8
-'@
-    $releaseNotesContent = "Beer Journal 1.0`r`n`r`nFirst stable local-first Android release. Beer and Tasting management, local photos and compression, tags, countries, categories, ratings, search, filters, sorting, statistics, trash recovery, and JSON backup/restore.`r`n`r`nData stays on the device. There is no account or cloud sync. The test package com.mybeerjournal.app.v1test and formal package com.mybeerjournal.app are separate apps; export JSON from the test app before importing it into the formal app."
+    $releaseNotesSource = Join-Path $repoRoot 'docs\RELEASE_NOTES_ZH.md'
+    if (-not (Test-Path -LiteralPath $releaseNotesSource)) { throw 'Chinese release notes source is missing.' }
+    $releaseNotesContent = Get-Content -LiteralPath $releaseNotesSource -Raw -Encoding UTF8
     Set-Content -LiteralPath $releaseNotes -Value $releaseNotesContent -Encoding UTF8
+    $releaseTitle = 'Beer Journal 1.0'
     $releaseProbe = Invoke-Captured -FilePath $ghPath -Arguments @('release', 'view', $tag, '--repo', $fullRepo) -AllowFailure -Quiet
     if ($releaseProbe.ExitCode -eq 0) {
         Invoke-Captured -FilePath $ghPath -Arguments @('release', 'upload', $tag, $apkPath, $shaPath, '--repo', $fullRepo, '--clobber') | Out-Null
-        Invoke-Captured -FilePath $ghPath -Arguments @('release', 'edit', $tag, '--repo', $fullRepo, '--title', '"Beer Journal 1.0"', '--notes-file', $releaseNotes, '--latest') | Out-Null
+        Invoke-Captured -FilePath $ghPath -Arguments @('release', 'edit', $tag, '--repo', $fullRepo, '--title', $releaseTitle, '--notes-file', $releaseNotes, '--latest') | Out-Null
     } else {
-        Invoke-Captured -FilePath $ghPath -Arguments @('release', 'create', $tag, $apkPath, $shaPath, '--repo', $fullRepo, '--title', '"Beer Journal 1.0"', '--notes-file', $releaseNotes, '--latest') | Out-Null
+        Invoke-Captured -FilePath $ghPath -Arguments @('release', 'create', $tag, $apkPath, $shaPath, '--repo', $fullRepo, '--title', $releaseTitle, '--notes-file', $releaseNotes, '--latest') | Out-Null
     }
 
     $pagesBody = Join-Path $env:TEMP 'beer-journal-pages.json'
     $tempFiles += $pagesBody
-    [IO.File]::WriteAllText($pagesBody, '{"source":{"branch":"main","path":"/docs"}}', (New-Object Text.UTF8Encoding($false)))
-    $pages = Invoke-Captured -FilePath $ghPath -Arguments @('api', "repos/$fullRepo/pages") -AllowFailure -Quiet
+    $pagesJson = @{ source = @{ branch = 'main'; path = '/docs' } } | ConvertTo-Json -Compress
+    [IO.File]::WriteAllText($pagesBody, $pagesJson, (New-Object Text.UTF8Encoding($false)))
+    $pagesApiPath = 'repos/' + $fullRepo + '/pages'
+    $pages = Invoke-Captured -FilePath $ghPath -Arguments @('api', $pagesApiPath) -AllowFailure -Quiet
     if ($pages.ExitCode -eq 0) {
-        $pagesUpdate = Invoke-Captured -FilePath $ghPath -Arguments @('api', '--method', 'PUT', "repos/$fullRepo/pages", '--input', $pagesBody) -AllowFailure
+        $pagesUpdate = Invoke-Captured -FilePath $ghPath -Arguments @('api', '--method', 'PUT', $pagesApiPath, '--input', $pagesBody) -AllowFailure
         if ($pagesUpdate.ExitCode -ne 0) { Write-Warning 'Pages source could not be updated. Use Settings -> Pages -> Deploy from a branch -> main -> /docs.' }
     } else {
-        $pagesCreate = Invoke-Captured -FilePath $ghPath -Arguments @('api', '--method', 'POST', "repos/$fullRepo/pages", '--input', $pagesBody) -AllowFailure
+        $pagesCreate = Invoke-Captured -FilePath $ghPath -Arguments @('api', '--method', 'POST', $pagesApiPath, '--input', $pagesBody) -AllowFailure
         if ($pagesCreate.ExitCode -ne 0) { Write-Warning 'Pages API setup failed. Use Settings -> Pages -> Deploy from a branch -> main -> /docs.' }
     }
 
     $finalStatus = Git-Output @('status', '--short')
-    Write-Host "Local main: $localMain"
-    Write-Host "Remote main: $(Remote-Main)"
-    Write-Host "v1.0.0 tag commit: $localTag"
-    Write-Host "Repository: https://github.com/$fullRepo"
-    Write-Host "Release: https://github.com/$fullRepo/releases/tag/$tag"
-    Write-Host "Pages: https://$Owner.github.io/$Repository/ (or configure main /docs if not enabled)"
-    Write-Host "APK SHA-256: $apkHash"
-    Write-Host "Git status: $finalStatus"
+    Write-Host ('Local main: ' + $localMain)
+    $remoteMainFinal = GetRemoteMain
+    Write-Host ('Remote main: ' + $remoteMainFinal)
+    Write-Host ('v1.0.0 tag commit: ' + $localTag)
+    Write-Host ('Repository: https://github.com/' + $fullRepo)
+    Write-Host ('Release: https://github.com/' + $fullRepo + '/releases/tag/' + $tag)
+    Write-Host ('Pages: ' + $repoHomepage + ' (or configure main /docs if not enabled)')
+    Write-Host ('APK SHA-256: ' + $apkHash)
+    Write-Host ('Git status: ' + $finalStatus)
 } finally {
     foreach ($file in $tempFiles) { Remove-Item $file -Force -ErrorAction SilentlyContinue }
     Pop-Location

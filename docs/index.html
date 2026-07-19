@@ -1,28 +1,92 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4a340">
-  <title>Beer Journal 1.0</title>
-  <style>
-    :root { color-scheme: light; --ink:#202124; --muted:#74777d; --warm:#f7f7f5; --card:#fff; --amber:#f4a340; --line:#ece9e3; }
-    * { box-sizing:border-box; } body { margin:0; background:var(--warm); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
-    main { width:min(100% - 32px, 960px); margin:auto; padding:48px 0 64px; }
-    .hero, .card { background:var(--card); border:1px solid rgba(32,33,36,.05); border-radius:28px; box-shadow:0 18px 50px rgba(32,33,36,.08); }
-    .hero { padding:40px; background:linear-gradient(135deg,#fff,#fff8ec); } .eyebrow { color:#a66513; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
-    h1 { margin:.2em 0; font-size:clamp(2.5rem,8vw,5rem); line-height:1; } h2 { margin-top:0; } p { color:var(--muted); }
-    .buttons { display:flex; flex-wrap:wrap; gap:12px; margin-top:24px; } a.button { display:inline-flex; min-height:48px; align-items:center; padding:10px 18px; border-radius:16px; background:var(--amber); color:var(--ink); font-weight:800; text-decoration:none; }
-    a.button.secondary { background:#fff; border:1px solid var(--line); } .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:20px; } .card { padding:24px; }
-    ul { padding-left:1.2em; } footer { margin-top:28px; color:var(--muted); font-size:.9rem; }
-  </style>
+  <meta name="theme-color" content="#f6f1e8">
+  <meta name="description" content="Beer Journal：完全离线的 Android 啤酒记录软件，让每一款啤酒和每次品饮都留在自己的手机里。">
+  <title>Beer Journal｜我的啤酒手帐</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <main>
-    <section class="hero"><div class="eyebrow">Beer Journal 1.0</div><h1>Your cellar,<br>kept local.</h1><p>An offline-first Android beer journal for bottles, tastings, photos, tags, ratings, and memories.</p><div class="buttons"><a class="button" href="https://github.com/Eddie135/Beer-Journal/releases/tag/v1.0.0">Download APK</a><a class="button secondary" href="https://github.com/Eddie135/Beer-Journal">View source</a></div></section>
-    <section class="grid"><article class="card"><h2>Made for daily use</h2><p>Manage Beer and Tasting records with countries, categories, styles, tags, five-option sensory ratings, search, filters, sorting, and recovery.</p></article><article class="card"><h2>Private by default</h2><p>Records and compressed photos stay on your Android device. There is no account, cloud sync, analytics, or advertising in 1.0.</p></article><article class="card"><h2>Back up yourself</h2><p>Export JSON backups regularly. Uninstalling the app or clearing its data can permanently remove local records and photos.</p></article></section>
-    <section class="card" style="margin-top:16px"><h2>What comes next</h2><p>Future candidates include complete photo backups, import conflict reports, CSV export, personalization, and optional synchronization. See <a href="ROADMAP.md">the roadmap</a>.</p></section>
-    <footer>Version 1.0.0 闂?Schema 4 闂?Fully local Android storage</footer>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="Beer Journal 首页">
+      <img src="../core/static/icons/beer-journal-icon-192-v3.png" alt="Beer Journal 图标">
+      <span>Beer Journal</span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">菜单</button>
+    <nav id="site-nav" class="site-nav" aria-label="页面导航">
+      <a href="#features">功能</a>
+      <a href="#preview">界面预览</a>
+      <a href="#privacy">隐私</a>
+      <a href="#download">下载</a>
+      <a href="https://github.com/Eddie135/Beer-Journal">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero section-wrap">
+      <div class="hero-copy">
+        <p class="eyebrow">LOCAL-FIRST · ANDROID 1.0</p>
+        <h1>把每一杯啤酒，<em>认真记下来。</em></h1>
+        <p class="lead">Beer Journal（我的啤酒手帐）是一款完全离线的 Android 啤酒记录软件。记录啤酒资料、品饮感受、照片和标签，数据只留在自己的手机里。</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/Eddie135/Beer-Journal/releases/download/v1.0.0/Beer-Journal-v1.0.0-release.apk">下载 Android 正式版</a>
+          <a class="button button-quiet" href="https://github.com/Eddie135/Beer-Journal">查看源代码</a>
+        </div>
+        <p class="micro-copy">无账号 · 无广告 · 无云同步 · 无第三方追踪</p>
+      </div>
+      <div class="hero-visual" aria-label="Beer Journal 界面预览">
+        <div class="phone-frame">
+          <div class="phone-status"><span>9:41</span><span>▮▮▮ 100%</span></div>
+          <div class="phone-title"><span class="mini-mark">🍺</span><span>我的啤酒</span><span class="plus">＋</span></div>
+          <div class="phone-search">⌕　搜索啤酒、标签或国家</div>
+          <div class="mock-card">
+            <div class="mock-cover amber-cover">🍺</div>
+            <div><strong>一杯值得记住的拉格</strong><small>日本 · 淡色拉格</small><span class="mock-tags">清爽　柑橘</span></div>
+          </div>
+          <div class="mock-card compact"><div class="mock-dot"></div><div><strong>下一次品饮也要留下来</strong><small>每一条记录，都属于你</small></div></div>
+          <div class="phone-tabs"><span class="active">啤酒</span><span>品饮</span><span>数据</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="value-grid section-wrap" aria-label="产品价值">
+      <article><span class="value-icon">01</span><h2>认真记录每一款啤酒</h2><p>名称、品牌、酒厂、国家、分类、风格和长期感官评分，形成一份可回看的啤酒档案。</p></article>
+      <article><span class="value-icon">02</span><h2>每次品饮都能单独保存</h2><p>时间、地点、容量、瓶数、价格、评分和笔记互不覆盖，同一款 Beer 可以拥有完整时间线。</p></article>
+      <article><span class="value-icon">03</span><h2>照片、标签和笔记留住体验</h2><p>支持本地多照片、封面、风味标签和自定义国家，让记忆比一张评分更丰富。</p></article>
+      <article><span class="value-icon">04</span><h2>数据只属于自己</h2><p>SQLite 和照片保存在 App 私有空间，1.0 不需要账号，不把个人记录发送到服务器。</p></article>
+    </section>
+
+    <section id="features" class="section-wrap section-block">
+      <div class="section-heading"><p class="eyebrow">WHAT YOU CAN KEEP</p><h2>为长期记录而做的功能</h2><p>从第一次尝试到多年后的回看，Beer Journal 把日常记录做得轻而完整。</p></div>
+      <div class="feature-grid">
+        <article class="feature-card"><span>🍻</span><h3>Beer 资料</h3><p>新增、编辑、详情、软删除与恢复；支持自定义国家、大分类和风格。</p></article>
+        <article class="feature-card"><span>📝</span><h3>品饮记录</h3><p>每次品饮独立保存，包含时间、地点、容量、瓶数、价格、评分与笔记。</p></article>
+        <article class="feature-card"><span>◎</span><h3>评分与标签</h3><p>总体评分、口感/苦味/风味复杂度五选项评分，以及可自由维护的风味标签。</p></article>
+        <article class="feature-card"><span>▧</span><h3>本地照片</h3><p>Beer 与品饮均支持多照片、压缩、封面、预览、删除和恢复。</p></article>
+        <article class="feature-card"><span>⌕</span><h3>搜索、筛选、排序</h3><p>按名称、国家、分类、风格、标签和评分组合筛选，支持最新录入等稳定排序。</p></article>
+        <article class="feature-card"><span>▥</span><h3>个人统计</h3><p>Beer、品饮、瓶数、平均分、国家和类型分布，以及近期记录趋势。</p></article>
+        <article class="feature-card"><span>↺</span><h3>回收站</h3><p>常规删除进入回收站，可恢复 Beer、品饮、标签关系和照片。</p></article>
+        <article class="feature-card"><span>⇩</span><h3>JSON 备份与恢复</h3><p>导出可解析的本地备份包，包含数据库记录、关系和可读取的照片文件。</p></article>
+      </div>
+    </section>
+
+    <section id="preview" class="section-wrap section-block split-block">
+      <div class="section-heading"><p class="eyebrow">A QUIET INTERFACE</p><h2>温暖、清晰、不打扰</h2><p>移动端优先的界面用卡片、圆角和琥珀色强调关键动作。这里是功能界面预览，不是用户数据截图。</p><a class="text-link" href="https://github.com/Eddie135/Beer-Journal/tree/main/mobile">查看本地前端源码　→</a></div>
+      <div class="preview-panel"><div class="preview-row"><span class="preview-label">本月品饮</span><strong>12</strong></div><div class="progress"><i style="width:72%"></i></div><div class="preview-row"><span>探索国家</span><strong>08</strong></div><div class="country-pills"><span>🇯🇵 日本</span><span>🇩🇪 德国</span><span>🇧🇪 比利时</span></div><div class="preview-note">“留一行笔记，下一次就能想起当时的味道。”</div></div>
+    </section>
+
+    <section id="privacy" class="privacy-band"><div class="section-wrap privacy-inner"><div><p class="eyebrow">OFFLINE BY DEFAULT</p><h2>你的记录，不需要经过我们。</h2></div><div class="privacy-list"><p><b>不需要账号</b><br>1.0 没有登录、社交和公开分享。</p><p><b>数据留在设备</b><br>SQLite 记录和压缩照片存放在 Android App 私有空间。</p><p><b>没有暗中联网</b><br>没有云同步、广告、统计追踪或对 <code>mybeerjournal.com</code> 的依赖。</p></div></div></section>
+
+    <section id="download" class="section-wrap section-block download-card"><div><p class="eyebrow">BEER JOURNAL 1.0</p><h2>现在开始，给自己的啤酒留一份档案。</h2><p>正式版适用于 Android 设备，最低 Android 7.0（API 24）。</p></div><div class="download-meta"><a class="button button-primary" href="https://github.com/Eddie135/Beer-Journal/releases/download/v1.0.0/Beer-Journal-v1.0.0-release.apk">下载 Beer-Journal-v1.0.0-release.apk</a><p>版本 1.0.0 · versionCode 31 · Schema 4<br><a href="https://github.com/Eddie135/Beer-Journal/releases/download/v1.0.0/Beer-Journal-v1.0.0-SHA256.txt">查看 SHA-256 校验文件</a></p></div></section>
+
+    <section class="section-wrap install-grid"><article class="plain-card"><span class="step">01</span><h3>下载并安装</h3><p>从 GitHub Release 下载 APK，在 Android 设置中允许本次安装来源即可。</p></article><article class="plain-card"><span class="step">02</span><h3>先导出，再迁移</h3><p>测试包与正式包是两个独立 App。若你使用过 v1test，请先导出 JSON，再在正式版导入并核对。</p></article><article class="plain-card"><span class="step">03</span><h3>定期备份</h3><p>卸载或清除 App 数据会删除本机记录和照片，建议定期导出备份文件。</p></article></section>
+
+    <section class="section-wrap faq"><div class="section-heading"><p class="eyebrow">FAQ</p><h2>常见问题</h2></div><details><summary>Beer Journal 会同步到云端吗？</summary><p>不会。1.0 完全离线，没有账号、服务器同步或多设备共享。</p></details><details><summary>照片和数据存在哪里？</summary><p>记录保存在本地 SQLite，压缩照片保存在 Android App 私有目录，不会作为公开链接上传。</p></details><details><summary>卸载后还能找回数据吗？</summary><p>不能保证。卸载或清除数据会移除本地内容，请先导出 JSON 备份。</p></details><details><summary>支持 iPhone 吗？</summary><p>当前版本是 Android APK。其他平台暂不在 1.0 范围内。</p></details></section>
   </main>
+
+  <footer class="site-footer"><div class="section-wrap footer-inner"><span>© <span id="year">2026</span> Beer Journal · 我的啤酒手帐</span><nav><a href="https://github.com/Eddie135/Beer-Journal">GitHub</a><a href="https://github.com/Eddie135/Beer-Journal/releases/tag/v1.0.0">Release</a><a href="../PRIVACY.md">隐私说明</a><a href="../SECURITY.md">安全说明</a><a href="../CHANGELOG.md">更新日志</a><a href="ROADMAP.md">路线图</a></nav></div></footer>
+  <script src="script.js" defer></script>
 </body>
 </html>
