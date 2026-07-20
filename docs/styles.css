@@ -65,6 +65,18 @@ h3 { margin-bottom: 9px; font-size: 1.15rem; }
 .release-card { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-top: 76px; margin-bottom: 100px; padding: clamp(28px, 6vw, 58px); border-radius: var(--radius); background: linear-gradient(135deg, #fffdf9, #f8e5bf); box-shadow: var(--shadow); }
 .release-card h2 { margin-bottom: 12px; }
 .release-card p { max-width: 720px; margin-bottom: 0; color: var(--muted); }
+.roadmap-section { padding-bottom: 96px; }
+.roadmap-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 16px; }
+.roadmap-card { padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: rgba(255, 253, 249, .86); box-shadow: 0 12px 32px rgba(69, 53, 32, .06); }
+.roadmap-card h3 { margin-bottom: 18px; color: var(--amber-deep); font-size: 1.25rem; }
+.roadmap-card ul { display: grid; gap: 16px; margin: 0; padding: 0; list-style: none; }
+.roadmap-card li { display: grid; gap: 2px; }
+.roadmap-card li strong { color: var(--ink); }
+.roadmap-card li span { color: var(--muted); font-size: .94rem; }
+.roadmap-card-secondary { background: linear-gradient(145deg, #f4fbf5, #fffdf9); }
+.roadmap-bullets { gap: 12px !important; }
+.roadmap-bullets li { display: block; color: var(--ink); }
+.roadmap-section blockquote { margin: 22px 0 0; padding: 16px 20px; border-left: 4px solid var(--amber); border-radius: 0 14px 14px 0; color: var(--muted); background: rgba(255, 246, 225, .72); }
 .site-footer { border-top: 1px solid var(--line); }
 .footer-inner { display: flex; justify-content: space-between; gap: 20px; padding-top: 25px; padding-bottom: 35px; color: var(--muted); font-size: .85rem; }
 .footer-inner nav { display: flex; flex-wrap: wrap; gap: 17px; }
@@ -84,6 +96,8 @@ h3 { margin-bottom: 9px; font-size: 1.15rem; }
   .section-block { padding-top: 70px; padding-bottom: 70px; }
   .release-card { display: block; margin-top: 55px; margin-bottom: 75px; }
   .release-card .button { margin-top: 22px; }
+  .roadmap-section { padding-bottom: 70px; }
+  .roadmap-grid { grid-template-columns: 1fr; }
   .footer-inner { display: block; }
   .footer-inner nav { margin-top: 15px; }
 }
