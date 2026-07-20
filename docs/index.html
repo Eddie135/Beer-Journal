@@ -5,19 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f7f3ec">
   <meta name="description" content="Beer Journal：一款专注个人记录的本地啤酒日志 App。离线可用，照片、标签、筛选和统计都留在手机里。">
-  <title>Beer Journal 1.0 · 你的本地啤酒日志</title>
+  <title>Beer Journal 1.0 · 你的私人啤酒记录本</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="#top" aria-label="Beer Journal 首页">
-      <img src="../mobile/web/assets/beer-journal-icon.png" alt="Beer Journal Logo">
+      <img src="assets/readme/beer-journal-icon.png" alt="Beer Journal Logo">
       <span>Beer Journal</span>
     </a>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">菜单</button>
     <nav id="site-nav" class="site-nav" aria-label="页面导航">
       <a href="#features">功能</a>
-      <a href="#preview">界面</a>
+      <a href="#preview">实际界面</a>
       <a href="#start">开始使用</a>
       <a class="nav-download" href="https://github.com/Eddie135/Beer-Journal/releases/download/v1.0.0/Beer-Journal-v1.0.0-release.apk">下载 1.0</a>
     </nav>
@@ -36,7 +36,7 @@
         <p class="micro-copy">无需账号 · 默认本地保存 · 当前版本 1.0.0</p>
       </div>
       <div class="hero-visual">
-        <img src="assets/readme/hero-banner.svg" alt="Beer Journal 产品头图">
+        <img src="assets/readme/hero-banner.png" alt="Beer Journal 产品头图">
       </div>
     </section>
 
@@ -48,25 +48,29 @@
       </div>
       <div class="feature-grid">
         <article class="feature-card"><span class="feature-icon">🍺</span><h3>我的收藏</h3><p>记录啤酒、品牌、国家、类型和评分，随时知道自己喝过什么。</p></article>
-        <article class="feature-card"><span class="feature-icon">🏷️</span><h3>标签与筛选</h3><p>用自己的风味标签整理口味，按国家、类型、评分和标签组合筛选。</p></article>
-        <article class="feature-card"><span class="feature-icon">📷</span><h3>照片与回忆</h3><p>保存多张本地照片、设置封面，压缩后依然保留每次开瓶的现场感。</p></article>
-        <article class="feature-card"><span class="feature-icon">📊</span><h3>个人统计</h3><p>查看饮用次数、瓶数、平均分、国家分布和最近的品饮记录。</p></article>
+        <article class="feature-card"><span class="feature-icon">🏷️</span><h3>标签与筛选</h3><p>用自己的风味标签整理口味，按国家、类型、评分和标签组合查找。</p></article>
+        <article class="feature-card"><span class="feature-icon">📷</span><h3>照片与回忆</h3><p>保存多张本地照片、设置封面，保留每次开瓶时的现场感。</p></article>
+        <article class="feature-card"><span class="feature-icon">📊</span><h3>个人统计</h3><p>查看饮用次数、瓶数、平均分、国家分布和最近的饮用记录。</p></article>
       </div>
     </section>
 
     <section id="preview" class="section-wrap section-block preview-section">
-      <div class="section-heading"><p class="eyebrow">APP PREVIEW</p><h2>看看它长什么样</h2><p>暖白背景、琥珀色按钮和圆角卡片，所有页面都为单手使用而设计。</p></div>
-      <div class="screenshot-row">
-        <figure><img src="assets/readme/screenshots/beer-list.png" alt="我的啤酒列表"><figcaption>我的啤酒</figcaption></figure>
-        <figure><img src="assets/readme/screenshots/beer-form.png" alt="添加啤酒表单"><figcaption>添加啤酒</figcaption></figure>
-        <figure><img src="assets/readme/screenshots/tasting-list.png" alt="饮用记录"><figcaption>饮用记录</figcaption></figure>
-        <figure><img src="assets/readme/screenshots/beer-detail.png" alt="啤酒详情"><figcaption>啤酒详情</figcaption></figure>
-        <figure><img src="assets/readme/screenshots/filter.png" alt="筛选面板"><figcaption>筛选与排序</figcaption></figure>
+      <div class="section-heading">
+        <p class="eyebrow">APP PREVIEW</p>
+        <h2>看看它长什么样</h2>
+        <p>暖白背景、琥珀色按钮和圆角卡片，所有页面都为单手使用而设计。</p>
+      </div>
+      <div class="screenshot-row" aria-label="Beer Journal 实际界面截图">
+        <figure class="screenshot-card"><div class="screenshot-frame"><img src="assets/readme/screenshots/my-beers.jpg" alt="我的啤酒：集中管理收藏"></div><figcaption><strong>我的啤酒</strong><span>集中管理你的收藏啤酒</span></figcaption></figure>
+        <figure class="screenshot-card"><div class="screenshot-frame"><img src="assets/readme/screenshots/tasting-records.jpg" alt="饮用记录：记录每次品饮"></div><figcaption><strong>饮用记录</strong><span>按时间记录每一次实际品饮</span></figcaption></figure>
+        <figure class="screenshot-card"><div class="screenshot-frame"><img src="assets/readme/screenshots/personal-stats.jpg" alt="个人数据：查看统计结果"></div><figcaption><strong>个人数据</strong><span>查看口味偏好与统计结果</span></figcaption></figure>
+        <figure class="screenshot-card"><div class="screenshot-frame"><img src="assets/readme/screenshots/add-beer.jpg" alt="添加啤酒：快速录入资料"></div><figcaption><strong>添加啤酒</strong><span>快速录入新的啤酒资料</span></figcaption></figure>
+        <figure class="screenshot-card"><div class="screenshot-frame"><img src="assets/readme/screenshots/filter-sort.jpg" alt="筛选与排序：快速找到记录"></div><figcaption><strong>筛选与排序</strong><span>按分类、标签、评分快速查找</span></figcaption></figure>
       </div>
     </section>
 
     <section class="section-wrap two-column">
-      <div class="plain-card"><p class="eyebrow">FOR YOU</p><h2>适合认真喝酒的人</h2><ul><li>想记住自己喝过哪些啤酒</li><li>不想依赖社交平台或账号</li><li>希望照片和记录都留在本地</li><li>想按标签和评分回顾口味偏好</li></ul></div>
+      <div class="plain-card"><p class="eyebrow">FOR YOU</p><h2>适合认真喝啤酒的人</h2><ul><li>想记住自己喝过哪些啤酒</li><li>不想依赖社交平台或账号</li><li>希望照片和记录都留在本地</li><li>想按标签和评分回顾口味偏好</li></ul></div>
       <div id="start" class="plain-card"><p class="eyebrow">GET STARTED</p><h2>三步开始</h2><ol><li>从 Release 下载 APK</li><li>安装后添加第一款啤酒</li><li>定期导出 JSON 备份</li></ol><a class="button button-primary" href="https://github.com/Eddie135/Beer-Journal/releases/download/v1.0.0/Beer-Journal-v1.0.0-release.apk">下载 Beer Journal 1.0</a></div>
     </section>
 
